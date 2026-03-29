@@ -15,9 +15,13 @@ public class TareaController {
     @Autowired
     private TareaService tareaService;
 
-    @PostMapping
-    public ResponseEntity<TareaDomestica> crearTarea(@Valid @RequestBody TareaDomestica tarea) {
-        TareaDomestica nueva = tareaService.crearTarea(tarea);
-        return ResponseEntity.status(HttpStatus.CREATED).body(nueva);
+     @PostMapping
+    public ResponseEntity<?> crearTarea(@Valid @RequestBody TareaDomestica tarea) {
+        try {
+            TareaDomestica nueva = tareaService.crearTarea(tarea);
+            return ResponseEntity.status(HttpStatus.CREATED).body(nueva);
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(e.getMessage());
+        }
     }
 }

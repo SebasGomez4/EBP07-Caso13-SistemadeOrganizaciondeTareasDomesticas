@@ -28,6 +28,8 @@ public class TareaDomestica {
     @JsonFormat(pattern = "yyyy-MM-dd")
     private LocalDate fechaVencimiento;
 
+    @ManyToOne
+    @JoinColumn(name = "responsable_id")
     private Usuario responsable;
     private String prioridad;
     private String frecuencia;

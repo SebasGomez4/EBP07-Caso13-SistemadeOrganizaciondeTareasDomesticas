@@ -26,4 +26,8 @@ public class AuthService {
 
         return jwtUtil.generarToken(usuario.getCorreo());
     }
+
+    public void logout() {
+        // Stateless JWT: la invalidación se maneja en el cliente borrando el token.
+    }
 }

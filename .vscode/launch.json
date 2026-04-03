@@ -1,0 +1,14 @@
+{
+    "configurations": [
+        {
+            "type": "java",
+            "name": "Spring Boot-SoylaApplication<soyla>",
+            "request": "launch",
+            "cwd": "${workspaceFolder}",
+            "mainClass": "com.fabrica.soyla.SoylaApplication",
+            "projectName": "soyla",
+            "args": "",
+            "envFile": "${workspaceFolder}/.env"
+        }
+    ]
+}

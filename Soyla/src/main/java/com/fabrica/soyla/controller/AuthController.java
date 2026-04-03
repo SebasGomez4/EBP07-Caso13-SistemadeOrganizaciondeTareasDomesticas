@@ -19,4 +19,10 @@ public class AuthController {
         String token = authService.login(dto);
         return ResponseEntity.ok(token);
     }
+
+    @PostMapping("/logout")
+    public ResponseEntity<String> logout() {
+        authService.logout();
+        return ResponseEntity.ok("Cierre de sesión exitoso");
+    }
 }

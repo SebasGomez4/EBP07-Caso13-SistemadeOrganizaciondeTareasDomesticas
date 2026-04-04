@@ -1,5 +1,7 @@
 package com.fabrica.soyla.model;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
+
 import jakarta.persistence.*;
 import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotBlank;
@@ -24,5 +26,6 @@ public class Usuario {
     private String correo;
 
     @NotBlank(message = "La contraseña es obligatoria")
+    @JsonIgnore
     private String contrasena;
 }

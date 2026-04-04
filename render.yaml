@@ -1,0 +1,13 @@
+services:
+  - type: web
+    name: soyla-api
+    runtime: docker
+    rootDir: Soyla
+    healthCheckPath: /health
+    envVars:
+      - key: PORT
+        value: 10000
+      - key: JWT_SECRET
+        generateValue: true
+      - key: DATABASE_URL
+        sync: false

@@ -1,0 +1,37 @@
+# Git
+.git
+.gitignore
+.gitattributes
+
+# Maven
+target/
+*.jar
+*.war
+*.ear
+.m2/
+
+# IDE
+.vscode/
+.idea/
+*.iml
+.eclipse
+.classpath
+.project
+.settings/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+.env
+.env.local
+
+# Otros
+node_modules/
+npm-debug.log
+yarn-error.log
+*.log
+HELP.md
+README.md

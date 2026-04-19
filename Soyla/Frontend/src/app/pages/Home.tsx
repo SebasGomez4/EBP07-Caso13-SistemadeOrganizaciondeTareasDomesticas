@@ -79,8 +79,15 @@ export function Home() {
   }, [navigate]);
 
   const handleLogout = () => {
+    // Eliminar todos los datos de sesión y autenticación
     localStorage.removeItem("currentSession");
+    localStorage.removeItem("loginAttempts");
+    sessionStorage.removeItem("loginSuccess");
+
+    // Marcar cierre de sesión exitoso
     sessionStorage.setItem("logoutSuccess", "true");
+
+    // Redirigir a login
     navigate("/");
   };
 
@@ -99,14 +106,32 @@ export function Home() {
       <div className="bg-white/40 backdrop-blur-sm border-b border-purple-100/50">
         <div className="container mx-auto max-w-6xl px-6 py-4 flex items-center justify-between">
           <AppLogo size="sm" showTagline={false} />
-          <Button
-            variant="outline"
-            onClick={handleLogout}
-            className="flex items-center gap-2 border-purple-200 hover:bg-purple-50"
-          >
-            <LogOut className="h-4 w-4" />
-            Cerrar sesión
-          </Button>
+          <div className="flex items-center gap-4">
+            {/* Avatar: acceso rápido al perfil (Escenario 2 HU 1.3.1) */}
+            <button
+              onClick={() => navigate("/perfil")}
+              title="Ver mi perfil"
+              className="w-9 h-9 rounded-full bg-gradient-to-br from-purple-600 to-blue-600 flex items-center justify-center hover:opacity-90 transition-opacity ring-2 ring-purple-200 hover:ring-purple-400 focus:outline-none focus:ring-2 focus:ring-purple-400"
+            >
+              <span className="text-white text-xs font-semibold select-none">
+                {userName
+                  .trim()
+                  .split(" ")
+                  .filter(Boolean)
+                  .slice(0, 2)
+                  .map((w: string) => w[0].toUpperCase())
+                  .join("")}
+              </span>
+            </button>
+            <Button
+              variant="outline"
+              onClick={handleLogout}
+              className="flex items-center gap-2 border-purple-200 hover:bg-purple-50"
+            >
+              <LogOut className="h-4 w-4" />
+              Cerrar sesión
+            </Button>
+          </div>
         </div>
       </div>
 

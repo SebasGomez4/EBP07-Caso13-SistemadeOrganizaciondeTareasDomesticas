@@ -72,7 +72,12 @@ export function CreateTaskForm({ groupId, onTaskCreated }: CreateTaskFormProps) 
   };
 
   // Validación de la fecha límite
-  const validateDeadline = (deadline: string): string | null => {
+  const validateDeadline = (deadline: string, frequency: string): string | null => {
+    // Si tiene frecuencia definida, no se requiere fecha límite
+    if (frequency !== "ninguna") {
+      return null;
+    }
+
     if (!deadline) {
       return "La fecha límite es obligatoria";
     }
@@ -94,7 +99,7 @@ export function CreateTaskForm({ groupId, onTaskCreated }: CreateTaskFormProps) 
 
     // Validar todos los campos
     const nameError = validateTaskName(formData.name);
-    const deadlineError = validateDeadline(formData.deadline);
+    const deadlineError = validateDeadline(formData.deadline, formData.frequency);
 
     const newErrors: FormErrors = {};
     if (nameError) newErrors.name = nameError;
@@ -110,13 +115,15 @@ export function CreateTaskForm({ groupId, onTaskCreated }: CreateTaskFormProps) 
     // Simular tiempo de procesamiento (máximo 3 segundos)
     setIsSubmitting(true);
 
-    // Crear la tarea
+    // Crear la tarea (con campos mutuamente excluyentes)
     const newTask = {
       id: `task-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
       groupId: groupId,
       name: formData.name.trim(),
       description: formData.description.trim(),
-      deadline: formData.deadline,
+      // Solo guardar deadline si no hay frecuencia definida
+      deadline: formData.frequency === "ninguna" ? formData.deadline : "",
+      // Guardar frecuencia según selección
       frequency: formData.frequency,
       createdAt: Date.now(),
       status: "pending",
@@ -247,22 +254,35 @@ export function CreateTaskForm({ groupId, onTaskCreated }: CreateTaskFormProps) 
               {/* Fecha límite */}
               <div className="space-y-2">
                 <Label htmlFor="taskDeadline">
-                  Fecha límite <span className="text-red-500">*</span>
+                  Fecha límite {formData.frequency === "ninguna" && <span className="text-red-500">*</span>}
                 </Label>
                 <Input
                   id="taskDeadline"
                   type="date"
                   value={formData.deadline}
                   onChange={(e) => {
-                    setFormData({ ...formData, deadline: e.target.value });
+                    const newDeadline = e.target.value;
+                    // Si se define fecha límite, resetear frecuencia a "ninguna"
+                    setFormData({
+                      ...formData,
+                      deadline: newDeadline,
+                      frequency: newDeadline ? "ninguna" : formData.frequency
+                    });
                     if (errors.deadline) {
                       setErrors({ ...errors, deadline: undefined });
                     }
                   }}
                   min={getTodayDate()}
-                  className={errors.deadline ? "border-red-500 focus-visible:ring-red-200" : ""}
-                  disabled={isSubmitting}
+                  className={`${errors.deadline ? "border-red-500 focus-visible:ring-red-200" : ""} ${
+                    formData.frequency !== "ninguna" ? "disabled:opacity-50 cursor-not-allowed" : ""
+                  }`}
+                  disabled={isSubmitting || formData.frequency !== "ninguna"}
                 />
+                {formData.frequency !== "ninguna" && (
+                  <p className="text-xs text-gray-500 mt-1">
+                    No disponible cuando se define frecuencia
+                  </p>
+                )}
                 {errors.deadline && (
                   <p className="text-sm text-red-600 flex items-start gap-1.5">
                     <span className="inline-block w-1 h-1 bg-red-600 rounded-full mt-1.5"></span>
@@ -278,19 +298,43 @@ export function CreateTaskForm({ groupId, onTaskCreated }: CreateTaskFormProps) 
                 </Label>
                 <Select
                   value={formData.frequency}
-                  onValueChange={(value) => setFormData({ ...formData, frequency: value })}
-                  disabled={isSubmitting}
+                  onValueChange={(value) => {
+                    // Si se define frecuencia diferente a "ninguna", limpiar fecha límite
+                    setFormData({
+                      ...formData,
+                      frequency: value,
+                      deadline: value !== "ninguna" ? "" : formData.deadline
+                    });
+                    if (errors.deadline && value !== "ninguna") {
+                      setErrors({ ...errors, deadline: undefined });
+                    }
+                  }}
+                  disabled={isSubmitting || (formData.deadline !== "")}
                 >
-                  <SelectTrigger id="taskFrequency">
+                  <SelectTrigger
+                    id="taskFrequency"
+                    className={formData.deadline !== "" ? "disabled:opacity-50 cursor-not-allowed" : ""}
+                  >
                     <SelectValue placeholder="Selecciona la frecuencia" />
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="ninguna">Ninguna</SelectItem>
-                    <SelectItem value="diaria">Diaria</SelectItem>
-                    <SelectItem value="semanal">Semanal</SelectItem>
-                    <SelectItem value="mensual">Mensual</SelectItem>
+                    <SelectItem value="diaria" disabled={formData.deadline !== ""}>
+                      Diaria
+                    </SelectItem>
+                    <SelectItem value="semanal" disabled={formData.deadline !== ""}>
+                      Semanal
+                    </SelectItem>
+                    <SelectItem value="mensual" disabled={formData.deadline !== ""}>
+                      Mensual
+                    </SelectItem>
                   </SelectContent>
                 </Select>
+                {formData.deadline !== "" && (
+                  <p className="text-xs text-gray-500 mt-1">
+                    No disponible cuando se define fecha límite
+                  </p>
+                )}
               </div>
             </div>
 

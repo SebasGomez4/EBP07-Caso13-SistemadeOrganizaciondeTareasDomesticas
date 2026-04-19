@@ -5,7 +5,7 @@ import { Input } from "../components/ui/input";
 import { Label } from "../components/ui/label";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "../components/ui/card";
 import { Alert, AlertDescription } from "../components/ui/alert";
-import { AlertCircle, UserPlus } from "lucide-react";
+import { AlertCircle, UserPlus, Check, X } from "lucide-react";
 import { AppLogo } from "../components/AppLogo";
 
 interface User {
@@ -14,18 +14,56 @@ interface User {
   password: string;
 }
 
+// Lista de contraseñas comunes que deben rechazarse
+const COMMON_PASSWORDS = [
+  "password", "Password1", "12345678", "qwerty123", "abc123456",
+  "password123", "admin123", "letmein123", "welcome123", "monkey123",
+  "dragon123", "master123", "sunshine123", "iloveyou", "princess123",
+  "football123", "123456789", "1234567890", "12341234", "password1",
+  "123123123", "00000000", "11111111", "Passw0rd", "P@ssw0rd",
+  "admin1234", "user1234", "test1234", "demo1234", "Welcome1"
+];
+
+// Validaciones de complejidad de contraseña
+const validatePasswordComplexity = (password: string) => {
+  const requirements = {
+    length: password.length >= 8,
+    uppercase: /[A-Z]/.test(password),
+    lowercase: /[a-z]/.test(password),
+    number: /[0-9]/.test(password),
+    special: /[!@#$%^&*()_+\-=\[\]{};':"\\|,.<>\/?]/.test(password),
+  };
+
+  const allValid = Object.values(requirements).every((valid) => valid);
+
+  return { requirements, allValid };
+};
+
+const isCommonPassword = (password: string): boolean => {
+  const lowerPassword = password.toLowerCase();
+  return COMMON_PASSWORDS.some((common) =>
+    lowerPassword === common.toLowerCase() ||
+    lowerPassword.includes(common.toLowerCase())
+  );
+};
+
 export function Register() {
   const navigate = useNavigate();
   const [fullName, setFullName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
+  const [passwordError, setPasswordError] = useState("");
   const [success, setSuccess] = useState(false);
   const [loading, setLoading] = useState(false);
+
+  // Calcular requisitos de contraseña en tiempo real
+  const passwordValidation = password ? validatePasswordComplexity(password) : null;
 
   const handleSubmit = (e: FormEvent) => {
     e.preventDefault();
     setError("");
+    setPasswordError("");
     setSuccess(false);
 
     // Validación de campos vacíos
@@ -41,9 +79,16 @@ export function Register() {
       return;
     }
 
-    // Validación de contraseña (mínimo 6 caracteres)
-    if (password.length < 6) {
-      setError("La contraseña debe tener al menos 6 caracteres");
+    // Validación de complejidad de contraseña
+    const validation = validatePasswordComplexity(password);
+    if (!validation.allValid) {
+      setPasswordError("La contraseña no cumple con los requisitos de seguridad");
+      return;
+    }
+
+    // Validación de contraseñas comunes
+    if (isCommonPassword(password)) {
+      setPasswordError("Esta contraseña es muy común o insegura. Por favor, elige una combinación más segura");
       return;
     }
 
@@ -94,14 +139,9 @@ export function Register() {
         </Card>
       ) : (
       <div className="w-full max-w-md">
-        {/* Logo de la aplicación con mayor protagonismo */}
-        <div className="text-center mb-12">
-          <h1 className="text-6xl font-bold bg-gradient-to-r from-purple-600 to-blue-600 bg-clip-text text-transparent mb-3 py-2 leading-tight">
-            Soyla
-          </h1>
-          <p className="text-gray-600 text-base">
-            Sistema de gestión de tareas domésticas
-          </p>
+        {/* Logo de la aplicación */}
+        <div className="flex justify-center mb-8">
+          <AppLogo size="md" variant="horizontal" showTagline={true} />
         </div>
 
       <Card className="w-full shadow-lg border-purple-100">
@@ -153,10 +193,110 @@ export function Register() {
                 type="password"
                 placeholder="••••••"
                 value={password}
-                onChange={(e) => setPassword(e.target.value)}
+                onChange={(e) => {
+                  setPassword(e.target.value);
+                  setPasswordError("");
+                }}
                 disabled={loading}
-                className="h-11"
+                className={`h-11 ${passwordError ? "border-red-500 focus-visible:ring-red-200" : ""}`}
               />
+
+              {/* Mensaje de error de contraseña */}
+              {passwordError && (
+                <p className="text-sm text-red-600 flex items-start gap-1.5 mt-2">
+                  <AlertCircle className="h-4 w-4 shrink-0 mt-0.5" />
+                  {passwordError}
+                </p>
+              )}
+
+              {/* Reglas de contraseña */}
+              <div className="mt-3 p-3 bg-gray-50 rounded-md border border-gray-200">
+                <p className="text-xs font-medium text-gray-700 mb-2">
+                  La contraseña debe cumplir con:
+                </p>
+                <ul className="space-y-1.5">
+                  <li className="flex items-center gap-2 text-xs">
+                    {passwordValidation?.requirements.length ? (
+                      <Check className="h-3.5 w-3.5 text-green-600" />
+                    ) : (
+                      <X className="h-3.5 w-3.5 text-gray-400" />
+                    )}
+                    <span
+                      className={
+                        passwordValidation?.requirements.length
+                          ? "text-green-700"
+                          : "text-gray-600"
+                      }
+                    >
+                      Mínimo 8 caracteres
+                    </span>
+                  </li>
+                  <li className="flex items-center gap-2 text-xs">
+                    {passwordValidation?.requirements.uppercase ? (
+                      <Check className="h-3.5 w-3.5 text-green-600" />
+                    ) : (
+                      <X className="h-3.5 w-3.5 text-gray-400" />
+                    )}
+                    <span
+                      className={
+                        passwordValidation?.requirements.uppercase
+                          ? "text-green-700"
+                          : "text-gray-600"
+                      }
+                    >
+                      Al menos una letra mayúscula
+                    </span>
+                  </li>
+                  <li className="flex items-center gap-2 text-xs">
+                    {passwordValidation?.requirements.lowercase ? (
+                      <Check className="h-3.5 w-3.5 text-green-600" />
+                    ) : (
+                      <X className="h-3.5 w-3.5 text-gray-400" />
+                    )}
+                    <span
+                      className={
+                        passwordValidation?.requirements.lowercase
+                          ? "text-green-700"
+                          : "text-gray-600"
+                      }
+                    >
+                      Al menos una letra minúscula
+                    </span>
+                  </li>
+                  <li className="flex items-center gap-2 text-xs">
+                    {passwordValidation?.requirements.number ? (
+                      <Check className="h-3.5 w-3.5 text-green-600" />
+                    ) : (
+                      <X className="h-3.5 w-3.5 text-gray-400" />
+                    )}
+                    <span
+                      className={
+                        passwordValidation?.requirements.number
+                          ? "text-green-700"
+                          : "text-gray-600"
+                      }
+                    >
+                      Al menos un número
+                    </span>
+                  </li>
+                  <li className="flex items-center gap-2 text-xs">
+                    {passwordValidation?.requirements.special ? (
+                      <Check className="h-3.5 w-3.5 text-green-600" />
+                    ) : (
+                      <X className="h-3.5 w-3.5 text-gray-400" />
+                    )}
+                    <span
+                      className={
+                        passwordValidation?.requirements.special
+                          ? "text-green-700"
+                          : "text-gray-600"
+                      }
+                    >
+                      Al menos un carácter especial (!@#$%^&*...)
+                    </span>
+                  </li>
+                </ul>
+              </div>
             </div>
           </CardContent>
 

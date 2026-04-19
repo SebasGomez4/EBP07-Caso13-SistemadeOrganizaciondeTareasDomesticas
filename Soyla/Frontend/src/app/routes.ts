@@ -5,6 +5,9 @@ import { Home } from "./pages/Home";
 import { CreateGroup } from "./pages/CreateGroup";
 import { GroupCreated } from "./pages/GroupCreated";
 import { GroupView } from "./pages/GroupView";
+import { Profile } from "./pages/Profile";
+import { EditProfile } from "./pages/EditProfile";
+import { InviteAccess } from "./pages/InviteAccess";
 
 export const router = createBrowserRouter([
   {
@@ -30,5 +33,17 @@ export const router = createBrowserRouter([
   {
     path: "/grupo/:groupId",
     Component: GroupView,
+  },
+  {
+    path: "/perfil",
+    Component: Profile,
+  },
+  {
+    path: "/editar-perfil",
+    Component: EditProfile,
+  },
+  {
+    path: "/unirse/:inviteCode",
+    Component: InviteAccess,
   },
 ]);

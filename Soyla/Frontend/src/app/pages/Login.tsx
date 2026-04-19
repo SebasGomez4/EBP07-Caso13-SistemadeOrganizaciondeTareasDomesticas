@@ -93,14 +93,9 @@ export function Login() {
       return;
     }
 
-    // Validación de campos vacíos
-    if (!email.trim()) {
-      setError("Por favor, ingresa tu correo electrónico");
-      return;
-    }
-
-    if (!password.trim()) {
-      setError("Por favor, ingresa tu contraseña");
+    // Validación de campos vacíos (mensaje genérico)
+    if (!email.trim() || !password.trim()) {
+      setError("Por favor, completa todos los campos");
       return;
     }
 
@@ -111,18 +106,10 @@ export function Login() {
       const users: User[] = JSON.parse(localStorage.getItem("users") || "[]");
       const user = users.find((u: User) => u.email === email);
 
-      // Usuario no registrado
-      if (!user) {
+      // Validación de credenciales (mensaje genérico para no revelar información)
+      if (!user || user.password !== password) {
         handleFailedAttempt();
-        setError("No existe una cuenta con este correo electrónico");
-        setLoading(false);
-        return;
-      }
-
-      // Contraseña incorrecta
-      if (user.password !== password) {
-        handleFailedAttempt();
-        setError("Contraseña incorrecta");
+        setError("Credenciales incorrectas");
         setLoading(false);
         return;
       }
@@ -173,14 +160,9 @@ export function Login() {
       )}
 
       <div className="w-full max-w-md">
-        {/* Logo de la aplicación con mayor protagonismo */}
-        <div className="text-center mb-12">
-          <h1 className="text-6xl font-bold bg-gradient-to-r from-purple-600 to-blue-600 bg-clip-text text-transparent mb-3 py-2 leading-tight">
-            Soyla
-          </h1>
-          <p className="text-gray-600 text-base">
-            Sistema de gestión de tareas domésticas
-          </p>
+        {/* Logo de la aplicación */}
+        <div className="flex justify-center mb-8">
+          <AppLogo size="md" variant="horizontal" showTagline={true} />
         </div>
 
       <Card className="w-full shadow-lg border-purple-100">

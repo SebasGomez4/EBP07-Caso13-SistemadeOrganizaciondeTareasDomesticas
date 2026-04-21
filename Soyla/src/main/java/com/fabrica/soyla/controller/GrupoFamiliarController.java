@@ -17,15 +17,11 @@ public class GrupoFamiliarController {
     private GrupoFamiliarService grupoFamiliarService;
 
     @PostMapping("/crear")
-    public ResponseEntity<?> crearGrupo(
+    public ResponseEntity<GrupoFamiliar> crearGrupo(
             @Valid @RequestBody CrearGrupoDTO dto,
             @RequestHeader("Authorization") String authHeader) {
-        try {
-            String token = authHeader.replace("Bearer ", "");
-            GrupoFamiliar grupo = grupoFamiliarService.crearGrupo(dto, token);
-            return ResponseEntity.status(HttpStatus.CREATED).body(grupo);
-        } catch (IllegalArgumentException e) {
-            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(e.getMessage());
-        }
+        String token = authHeader.replace("Bearer ", "");
+        GrupoFamiliar grupo = grupoFamiliarService.crearGrupo(dto, token);
+        return ResponseEntity.status(HttpStatus.CREATED).body(grupo);
     }
 }

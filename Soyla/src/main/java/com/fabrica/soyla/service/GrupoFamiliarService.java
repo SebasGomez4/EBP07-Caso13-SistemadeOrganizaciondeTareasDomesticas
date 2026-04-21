@@ -26,8 +26,6 @@ public class GrupoFamiliarService {
     @Transactional
     public GrupoFamiliar crearGrupo(CrearGrupoDTO dto, String token) {
 
-        long inicio = System.currentTimeMillis();
-
         String correo = jwtUtil.extraerCorreo(token);
         Usuario usuario = usuarioRepository.findByCorreo(correo)
                 .orElseThrow(() -> new IllegalArgumentException("Usuario no encontrado"));
@@ -40,11 +38,6 @@ public class GrupoFamiliarService {
         grupo.setNombre(dto.getNombre());
         grupo.getMiembros().add(miembro);
         miembro.setGrupo(grupo);
-
-        long tiempo = System.currentTimeMillis() - inicio;
-        if (tiempo > 3000) {
-            throw new IllegalStateException("La creación del grupo tardó demasiado: " + tiempo + "ms");
-        }
 
         return grupoFamiliarRepository.save(grupo);
     }

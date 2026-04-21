@@ -17,12 +17,8 @@ public class UsuarioController {
     private UsuarioService usuarioService;
 
     @PostMapping("/registrar")
-    public ResponseEntity<?> registrarUsuario(@Valid @RequestBody RegistroUsuarioDTO dto) {
-        try {
-            Usuario nuevo = usuarioService.registrarUsuario(dto);
-            return ResponseEntity.status(HttpStatus.CREATED).body(nuevo);
-        } catch (IllegalArgumentException e) {
-            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(e.getMessage());
-        }
+    public ResponseEntity<Usuario> registrarUsuario(@Valid @RequestBody RegistroUsuarioDTO dto) {
+        Usuario nuevo = usuarioService.registrarUsuario(dto);
+        return ResponseEntity.status(HttpStatus.CREATED).body(nuevo);
     }
 }

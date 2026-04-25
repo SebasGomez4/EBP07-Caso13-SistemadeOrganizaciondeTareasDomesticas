@@ -15,9 +15,14 @@ public class GlobalExceptionHandler {
     @ExceptionHandler(MethodArgumentNotValidException.class)
     public ResponseEntity<Map<String, String>> handleValidationErrors(MethodArgumentNotValidException ex) {
         Map<String, String> errores = new HashMap<>();
-        ex.getBindingResult().getFieldErrors().forEach(error ->
-            errores.put(error.getField(), error.getDefaultMessage())
-        );
+        ex.getBindingResult().getFieldErrors().forEach(error -> {
+            if ("contrasena".equals(error.getField())) {
+                // Mensaje personalizado para errores de contraseña
+                errores.put(error.getField(), error.getDefaultMessage());
+            } else {
+                errores.put(error.getField(), error.getDefaultMessage());
+            }
+        });
         return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(errores);
     }
 
@@ -25,4 +30,10 @@ public class GlobalExceptionHandler {
     public ResponseEntity<String> handleIllegalArgument(IllegalArgumentException ex) {
         return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(ex.getMessage());
     }
+
+    @ExceptionHandler(IllegalStateException.class)
+    public ResponseEntity<String> handleIllegalState(IllegalStateException ex) {
+        return ResponseEntity.status(HttpStatus.REQUEST_TIMEOUT).body(ex.getMessage());
+    }
 }
+

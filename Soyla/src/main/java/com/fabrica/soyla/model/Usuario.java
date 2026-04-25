@@ -28,4 +28,6 @@ public class Usuario {
     @NotBlank(message = "La contraseña es obligatoria")
     @JsonIgnore
     private String contrasena;
+
+    private String fotoPerfil;
 }

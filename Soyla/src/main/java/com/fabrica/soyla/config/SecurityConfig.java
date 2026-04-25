@@ -17,13 +17,21 @@ public class SecurityConfig {
     public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
         http
             .csrf(csrf -> csrf.disable())
+            .headers(headers -> headers
+                .frameOptions(frame -> frame.deny())
+            )
             .authorizeHttpRequests(auth -> auth
-                .requestMatchers("/api/auth/**").permitAll()
+                .requestMatchers("/api/auth/login").permitAll()
+                .requestMatchers("/api/auth/logout").authenticated()
                 .requestMatchers("/api/usuarios/registrar").permitAll()
+                .requestMatchers("/api/invitaciones/*/validar").permitAll()
                 .requestMatchers("/api/grupos/**").authenticated()
-                .anyRequest().permitAll()
+                .requestMatchers("/api/tareas/**").authenticated()
+                .requestMatchers("/api/invitaciones/**").authenticated()
+                .anyRequest().authenticated()
             )
             .addFilterBefore(jwtFilter, UsernamePasswordAuthenticationFilter.class);
         return http.build();
     }
 }
+

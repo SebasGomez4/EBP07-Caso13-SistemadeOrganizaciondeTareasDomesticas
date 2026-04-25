@@ -2,6 +2,7 @@ package com.fabrica.soyla.service;
 
 import com.fabrica.soyla.config.JwtUtil;
 import com.fabrica.soyla.model.LoginDTO;
+import com.fabrica.soyla.model.LoginResponseDTO;
 import com.fabrica.soyla.model.Usuario;
 import com.fabrica.soyla.repository.UsuarioRepository;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -16,7 +17,13 @@ public class AuthService {
     @Autowired
     private JwtUtil jwtUtil;
 
-    public String login(LoginDTO dto) {
+    @Autowired
+    private InactivityTrackingService inactivityTrackingService;
+
+    @Autowired
+    private TokenBlacklistService tokenBlacklistService;
+
+    public LoginResponseDTO login(LoginDTO dto) {
         Usuario usuario = usuarioRepository.findByCorreo(dto.getCorreo())
                 .orElseThrow(() -> new IllegalArgumentException("Correo o contraseña incorrectos"));
 
@@ -24,10 +31,19 @@ public class AuthService {
             throw new IllegalArgumentException("Correo o contraseña incorrectos");
         }
 
-        return jwtUtil.generarToken(usuario.getCorreo());
+        String token = jwtUtil.generarToken(usuario.getCorreo());
+        inactivityTrackingService.registrarActividad(usuario.getCorreo());
+
+        return new LoginResponseDTO(token, usuario.getCorreo());
     }
 
-    public void logout() {
-        // Stateless JWT: la invalidación se maneja en el cliente borrando el token.
+    public void logout(String correo, String token) {
+        // Eliminar token de la lista de activos
+        inactivityTrackingService.cerrarSesion(correo);
+        
+        // Agregar token a la blacklist
+        if (token != null && !token.isEmpty()) {
+            tokenBlacklistService.agregarTokenALista(token);
+        }
     }
 }

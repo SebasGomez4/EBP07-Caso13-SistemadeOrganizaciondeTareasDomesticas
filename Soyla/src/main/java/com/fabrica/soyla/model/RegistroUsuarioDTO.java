@@ -1,5 +1,6 @@
 package com.fabrica.soyla.model;
 
+import com.fabrica.soyla.validation.ValidarContraseña;
 import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotBlank;
 import lombok.Getter;
@@ -17,5 +18,6 @@ public class RegistroUsuarioDTO {
     private String correo;
 
     @NotBlank(message = "La contraseña es obligatoria")
+    @ValidarContraseña
     private String contrasena;
 }

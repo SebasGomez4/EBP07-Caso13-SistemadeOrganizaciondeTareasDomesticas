@@ -4,12 +4,15 @@ import com.fabrica.soyla.config.JwtUtil;
 import com.fabrica.soyla.model.CrearGrupoDTO;
 import com.fabrica.soyla.model.GrupoFamiliar;
 import com.fabrica.soyla.model.GrupoMiembro;
+import com.fabrica.soyla.model.MiembroDTO;
 import com.fabrica.soyla.model.Usuario;
 import com.fabrica.soyla.repository.GrupoFamiliarRepository;
 import com.fabrica.soyla.repository.UsuarioRepository;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import com.fabrica.soyla.model.MiembroDTO;
+import java.util.List;
 
 @Service
 public class GrupoFamiliarService {
@@ -40,5 +43,33 @@ public class GrupoFamiliarService {
         miembro.setGrupo(grupo);
 
         return grupoFamiliarRepository.save(grupo);
-    }
+    }       
+
+    public List<MiembroDTO> obtenerMiembros(Long grupoId, String token) {
+
+    // Validar que el token es válido y extraer el correo
+    String correo = jwtUtil.extraerCorreo(token);
+
+    // Verificar que el usuario pertenece al grupo
+    GrupoMiembro miembroActual = grupoFamiliarRepository
+            .findMiembroEnGrupo(grupoId, correo)
+            .orElseThrow(() -> new IllegalArgumentException("No perteneces a este grupo"));
+
+    // Obtener el grupo
+    GrupoFamiliar grupo = grupoFamiliarRepository.findById(grupoId)
+            .orElseThrow(() -> new IllegalArgumentException("Grupo no encontrado"));
+
+    boolean esAdmin = miembroActual.getRol().equals("ADMIN");
+
+    // Construir la lista de miembros según el rol
+    return grupo.getMiembros().stream().map(miembro -> {
+        MiembroDTO dto = new MiembroDTO();
+        dto.setNombre(miembro.getUsuario().getNombre());
+        dto.setRol(miembro.getRol());
+        if (esAdmin) {
+            dto.setCorreo(miembro.getUsuario().getCorreo());
+        }
+        return dto;
+    }).toList();
+}
 }

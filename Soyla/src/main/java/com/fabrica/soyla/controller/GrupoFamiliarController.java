@@ -2,12 +2,14 @@ package com.fabrica.soyla.controller;
 
 import com.fabrica.soyla.model.CrearGrupoDTO;
 import com.fabrica.soyla.model.GrupoFamiliar;
+import com.fabrica.soyla.model.MiembroDTO;
 import com.fabrica.soyla.service.GrupoFamiliarService;
 import jakarta.validation.Valid;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
+import java.util.List;
 
 @RestController
 @RequestMapping("/api/grupos")
@@ -23,5 +25,14 @@ public class GrupoFamiliarController {
         String token = authHeader.replace("Bearer ", "");
         GrupoFamiliar grupo = grupoFamiliarService.crearGrupo(dto, token);
         return ResponseEntity.status(HttpStatus.CREATED).body(grupo);
+    }   
+
+    @GetMapping("/{grupoId}/miembros")
+    public ResponseEntity<List<MiembroDTO>> obtenerMiembros(
+            @PathVariable Long grupoId,
+            @RequestHeader("Authorization") String authHeader) {
+        String token = authHeader.replace("Bearer ", "");
+        List<MiembroDTO> miembros = grupoFamiliarService.obtenerMiembros(grupoId, token);
+        return ResponseEntity.ok(miembros);
     }
 }

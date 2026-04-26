@@ -22,9 +22,10 @@ public class SecurityConfig {
             )
             .authorizeHttpRequests(auth -> auth
                 .requestMatchers("/api/auth/login").permitAll()
-                .requestMatchers("/api/auth/logout").authenticated()
                 .requestMatchers("/api/usuarios/registrar").permitAll()
                 .requestMatchers("/api/invitaciones/*/validar").permitAll()
+                .requestMatchers("/api/invitaciones/*/aceptar").authenticated()
+                .requestMatchers("/api/auth/logout").authenticated()
                 .requestMatchers("/api/grupos/**").authenticated()
                 .requestMatchers("/api/tareas/**").authenticated()
                 .requestMatchers("/api/invitaciones/**").authenticated()

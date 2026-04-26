@@ -10,4 +10,5 @@ import java.util.List;
 @Repository
 public interface TareaRepository extends JpaRepository<TareaDomestica, Long> {
     List<TareaDomestica> findByFechaVencimientoGreaterThanEqual(LocalDate fecha);
+    List<TareaDomestica> findByResponsableId(Long responsableId);
 }

@@ -1,6 +1,9 @@
 package com.fabrica.soyla.service;
 
+import com.fabrica.soyla.model.AsignarTareaDTO;
 import com.fabrica.soyla.model.GrupoFamiliar;
+import com.fabrica.soyla.model.GrupoMiembro;
+import com.fabrica.soyla.model.MiembroDTO;
 import com.fabrica.soyla.model.TareaDomestica;
 import com.fabrica.soyla.model.Usuario;
 import com.fabrica.soyla.repository.GrupoFamiliarRepository;
@@ -9,6 +12,8 @@ import com.fabrica.soyla.repository.UsuarioRepository;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import com.fabrica.soyla.model.AsignarTareaDTO;
+import com.fabrica.soyla.model.MiembroDTO;
 
 import java.time.LocalDate;
 import java.util.List;
@@ -71,4 +76,47 @@ public class TareaService {
                 .flatMap(grupo -> grupo.getMiembros().stream())
                 .anyMatch(miembro -> miembro.getUsuario().getId().equals(usuarioId));
     }
+    @Transactional
+    public TareaDomestica asignarTarea(AsignarTareaDTO dto, String correoUsuario) {
+
+        // Verificar que quien asigna pertenece al grupo
+        GrupoMiembro miembroAsignador = grupoFamiliarRepository
+                .findMiembroEnGrupo(dto.getGrupoId(), correoUsuario)
+                .orElseThrow(() -> new IllegalStateException("No perteneces a este grupo familiar"));
+
+        // Verificar que el responsable también pertenece al grupo
+        GrupoMiembro miembroResponsable = grupoFamiliarRepository
+                .findMiembroEnGrupoPorUsuarioId(dto.getGrupoId(), dto.getResponsableId())
+                .orElseThrow(() -> new IllegalStateException("El miembro seleccionado no pertenece a este grupo familiar"));
+
+        // Obtener la tarea
+        TareaDomestica tarea = tareaRepository.findById(dto.getTareaId())
+                .orElseThrow(() -> new IllegalArgumentException("Tarea no encontrada"));
+
+        // Asignar el responsable
+        tarea.setResponsable(miembroResponsable.getUsuario());
+        return tareaRepository.saveAndFlush(tarea);
+    }
+
+    public List<MiembroDTO> obtenerMiembrosDisponibles(Long grupoId, String correoUsuario) {
+
+    // Verificar que quien consulta pertenece al grupo
+    GrupoMiembro miembroActual = grupoFamiliarRepository
+            .findMiembroEnGrupo(grupoId, correoUsuario)
+            .orElseThrow(() -> new IllegalStateException("No perteneces a este grupo familiar"));
+
+    boolean esAdmin = miembroActual.getRol().equals("ADMIN");
+
+    // Retornar miembros del grupo
+    return grupoFamiliarRepository.findMiembrosByGrupoId(grupoId)
+            .stream().map(miembro -> {
+                MiembroDTO dto = new MiembroDTO();
+                dto.setNombre(miembro.getUsuario().getNombre());
+                dto.setRol(miembro.getRol());
+                if (esAdmin) {
+                    dto.setCorreo(miembro.getUsuario().getCorreo());
+                }
+                return dto;
+            }).toList();
+}
 }

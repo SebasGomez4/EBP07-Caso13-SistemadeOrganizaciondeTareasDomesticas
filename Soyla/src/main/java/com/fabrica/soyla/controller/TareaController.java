@@ -1,5 +1,7 @@
 package com.fabrica.soyla.controller;
 
+import com.fabrica.soyla.model.AsignarTareaDTO;
+import com.fabrica.soyla.model.MiembroDTO;
 import com.fabrica.soyla.model.TareaDomestica;
 import com.fabrica.soyla.repository.UsuarioRepository;
 import com.fabrica.soyla.service.TareaService;
@@ -10,7 +12,8 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.bind.annotation.*;
-
+import com.fabrica.soyla.model.AsignarTareaDTO;
+import com.fabrica.soyla.model.MiembroDTO;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -60,5 +63,37 @@ public class TareaController {
             response.put("estado", "error");
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(response);
         }
+    }   
+    @PostMapping("/asignar")
+    public ResponseEntity<Map<String, Object>> asignarTarea(
+            @Valid @RequestBody AsignarTareaDTO dto) {
+        Authentication auth = SecurityContextHolder.getContext().getAuthentication();
+        String correo = (String) auth.getPrincipal();
+        Map<String, Object> response = new HashMap<>();
+
+        try {
+            TareaDomestica tarea = tareaService.asignarTarea(dto, correo);
+            response.put("mensaje", "Tarea asignada exitosamente");
+            response.put("estado", "exito");
+            response.put("tarea", tarea);
+            return ResponseEntity.ok(response);
+        } catch (IllegalStateException e) {
+            response.put("mensaje", e.getMessage());
+            response.put("estado", "error");
+            return ResponseEntity.status(HttpStatus.FORBIDDEN).body(response);
+        } catch (IllegalArgumentException e) {
+            response.put("mensaje", e.getMessage());
+            response.put("estado", "error");
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).body(response);
+        }
+    }
+
+    @GetMapping("/miembros/{grupoId}")
+    public ResponseEntity<List<MiembroDTO>> obtenerMiembrosDisponibles(
+            @PathVariable Long grupoId) {
+        Authentication auth = SecurityContextHolder.getContext().getAuthentication();
+        String correo = (String) auth.getPrincipal();
+        List<MiembroDTO> miembros = tareaService.obtenerMiembrosDisponibles(grupoId, correo);
+        return ResponseEntity.ok(miembros);
     }
 }

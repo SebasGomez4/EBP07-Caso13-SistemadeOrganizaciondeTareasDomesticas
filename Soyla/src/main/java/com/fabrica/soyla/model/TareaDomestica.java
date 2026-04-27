@@ -31,6 +31,21 @@ public class TareaDomestica {
     @ManyToOne
     @JoinColumn(name = "responsable_id")
     private Usuario responsable;
+
     private String prioridad;
     private String frecuencia;
+    private String estado;
+
+    @ManyToOne
+    @JoinColumn(name = "grupo_id")
+    @NotNull(message = "El grupo es obligatorio")
+    private GrupoFamiliar grupo;
+
+    public String getNombreResponsable() {
+        return responsable != null ? responsable.getNombre() : "Sin responsable asignado";
+    }
+
+    public String getPrioridadMostrada() {
+        return prioridad != null && !prioridad.isBlank() ? prioridad : "Sin prioridad asignada";
+    }
 }

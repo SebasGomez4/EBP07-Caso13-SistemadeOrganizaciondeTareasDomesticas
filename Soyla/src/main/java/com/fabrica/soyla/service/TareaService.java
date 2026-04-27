@@ -12,9 +12,6 @@ import com.fabrica.soyla.repository.UsuarioRepository;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-import com.fabrica.soyla.model.AsignarTareaDTO;
-import com.fabrica.soyla.model.MiembroDTO;
-
 import java.time.LocalDate;
 import java.util.List;
 import java.util.Optional;
@@ -34,17 +31,42 @@ public class TareaService {
     private GrupoFamiliarRepository grupoFamiliarRepository;
 
     @Transactional
-    public TareaDomestica crearTarea(TareaDomestica tarea) {
-        if (tarea.getFechaVencimiento().isBefore(LocalDate.now())) {
-            throw new IllegalArgumentException("La fecha de vencimiento debe ser posterior a la actual.");
-        }
-        tarea.setId(null);
-        return tareaRepository.saveAndFlush(tarea);
+public TareaDomestica crearTarea(TareaDomestica tarea, String correoUsuario) {
+    if (tarea.getGrupo() == null || tarea.getGrupo().getId() == null) {
+        throw new IllegalArgumentException("El grupo es obligatorio");
     }
 
-    public List<TareaDomestica> listarTareasVigentes() {
-        return tareaRepository.findByFechaVencimientoGreaterThanEqual(LocalDate.now());
+    grupoFamiliarRepository.findMiembroEnGrupo(tarea.getGrupo().getId(), correoUsuario)
+            .orElseThrow(() -> new IllegalStateException("No perteneces a este grupo familiar"));
+
+    GrupoFamiliar grupo = grupoFamiliarRepository.findById(tarea.getGrupo().getId())
+            .orElseThrow(() -> new IllegalArgumentException("Grupo no encontrado"));
+
+    tarea.setId(null);
+    tarea.setGrupo(grupo);
+    tarea.setEstado(tarea.getEstado() != null ? tarea.getEstado() : "SIN_EMPEZAR");
+
+    return tareaRepository.saveAndFlush(tarea);
+}
+
+public List<TareaDomestica> listarTareasPorGrupo(Long grupoId, String correoUsuario) {
+    long startTime = System.currentTimeMillis();
+
+    grupoFamiliarRepository.findMiembroEnGrupo(grupoId, correoUsuario)
+            .orElseThrow(() -> new IllegalStateException("No perteneces a este grupo familiar"));
+
+    List<TareaDomestica> tareas = tareaRepository.findByGrupoId(grupoId);
+
+    long elapsedTime = System.currentTimeMillis() - startTime;
+    if (elapsedTime > 2000) {
+        throw new IllegalStateException(
+                "El tiempo de carga excedió el límite máximo de 2 segundos. " +
+                "Tiempo utilizado: " + elapsedTime + "ms"
+        );
     }
+
+    return tareas;
+}
 
     @Transactional
     public void eliminarTarea(Long tareaId, String correoUsuario) {

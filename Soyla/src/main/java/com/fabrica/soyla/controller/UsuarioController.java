@@ -1,5 +1,6 @@
 package com.fabrica.soyla.controller;
 
+import com.fabrica.soyla.model.EditarPerfilDTO;
 import com.fabrica.soyla.model.PerfilDTO;
 import com.fabrica.soyla.model.RegistroUsuarioDTO;
 import com.fabrica.soyla.model.Usuario;
@@ -39,4 +40,19 @@ public class UsuarioController {
         PerfilDTO perfil = usuarioService.obtenerPerfil(correo);
         return ResponseEntity.ok(perfil);
     }
+
+    @PutMapping("/perfil/{id}")
+    public ResponseEntity<?> editarPerfil(@PathVariable Long id,
+                                       @Valid @RequestBody EditarPerfilDTO dto) {
+    try {
+        Authentication auth = SecurityContextHolder.getContext().getAuthentication();
+        String correo = (String) auth.getPrincipal();
+        PerfilDTO perfil = usuarioService.editarPerfil(id, dto, correo);
+        return ResponseEntity.ok(perfil);
+    } catch (SecurityException e) {
+        return ResponseEntity.status(HttpStatus.FORBIDDEN).body(e.getMessage());
+    } catch (IllegalArgumentException e) {
+        return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(e.getMessage());
+    }
+}
 }

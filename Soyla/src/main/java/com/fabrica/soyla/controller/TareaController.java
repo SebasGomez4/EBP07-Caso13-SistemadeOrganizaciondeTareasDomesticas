@@ -12,8 +12,6 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.bind.annotation.*;
-import com.fabrica.soyla.model.AsignarTareaDTO;
-import com.fabrica.soyla.model.MiembroDTO;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -29,15 +27,40 @@ public class TareaController {
     private UsuarioRepository usuarioRepository;
 
     @PostMapping
-    public ResponseEntity<TareaDomestica> crearTarea(@Valid @RequestBody TareaDomestica tarea) {
-        TareaDomestica nueva = tareaService.crearTarea(tarea);
-        return ResponseEntity.status(HttpStatus.CREATED).body(nueva);
+    public ResponseEntity<?> crearTarea(@Valid @RequestBody TareaDomestica tarea) {
+        Authentication auth = SecurityContextHolder.getContext().getAuthentication();
+        String correo = (String) auth.getPrincipal();
+        try {
+            TareaDomestica nueva = tareaService.crearTarea(tarea, correo);
+            return ResponseEntity.status(HttpStatus.CREATED).body(nueva);
+        } catch (IllegalStateException e) {
+            Map<String, String> response = new HashMap<>();
+            response.put("mensaje", e.getMessage());
+            return ResponseEntity.status(HttpStatus.FORBIDDEN).body(response);
+        } catch (IllegalArgumentException e) {
+            Map<String, String> response = new HashMap<>();
+            response.put("mensaje", e.getMessage());
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(response);
+        }
     }
 
-    @GetMapping
-    public ResponseEntity<List<TareaDomestica>> listarTareas() {
-        List<TareaDomestica> tareas = tareaService.listarTareasVigentes();
-        return ResponseEntity.ok(tareas);
+    @GetMapping("/grupo/{grupoId}")
+    public ResponseEntity<?> listarTareasPorGrupo(@PathVariable Long grupoId) {
+        Authentication auth = SecurityContextHolder.getContext().getAuthentication();
+        String correo = (String) auth.getPrincipal();
+        try {
+            List<TareaDomestica> tareas = tareaService.listarTareasPorGrupo(grupoId, correo);
+            if (tareas.isEmpty()) {
+                Map<String, String> response = new HashMap<>();
+                response.put("mensaje", "No existen tareas registradas en este grupo");
+                return ResponseEntity.ok(response);
+            }
+            return ResponseEntity.ok(tareas);
+        } catch (IllegalStateException e) {
+            Map<String, String> response = new HashMap<>();
+            response.put("mensaje", e.getMessage());
+            return ResponseEntity.status(HttpStatus.FORBIDDEN).body(response);
+        }
     }
 
     @DeleteMapping("/{id}")
@@ -45,7 +68,6 @@ public class TareaController {
         Authentication auth = SecurityContextHolder.getContext().getAuthentication();
         String correo = (String) auth.getPrincipal();
         Map<String, String> response = new HashMap<>();
-
         try {
             tareaService.eliminarTarea(id, correo);
             response.put("mensaje", "Tarea doméstica eliminada exitosamente");
@@ -63,14 +85,13 @@ public class TareaController {
             response.put("estado", "error");
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(response);
         }
-    }   
+    }
+
     @PostMapping("/asignar")
-    public ResponseEntity<Map<String, Object>> asignarTarea(
-            @Valid @RequestBody AsignarTareaDTO dto) {
+    public ResponseEntity<Map<String, Object>> asignarTarea(@Valid @RequestBody AsignarTareaDTO dto) {
         Authentication auth = SecurityContextHolder.getContext().getAuthentication();
         String correo = (String) auth.getPrincipal();
         Map<String, Object> response = new HashMap<>();
-
         try {
             TareaDomestica tarea = tareaService.asignarTarea(dto, correo);
             response.put("mensaje", "Tarea asignada exitosamente");
@@ -89,8 +110,7 @@ public class TareaController {
     }
 
     @GetMapping("/miembros/{grupoId}")
-    public ResponseEntity<List<MiembroDTO>> obtenerMiembrosDisponibles(
-            @PathVariable Long grupoId) {
+    public ResponseEntity<List<MiembroDTO>> obtenerMiembrosDisponibles(@PathVariable Long grupoId) {
         Authentication auth = SecurityContextHolder.getContext().getAuthentication();
         String correo = (String) auth.getPrincipal();
         List<MiembroDTO> miembros = tareaService.obtenerMiembrosDisponibles(grupoId, correo);

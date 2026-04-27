@@ -19,4 +19,7 @@ public interface GrupoFamiliarRepository extends JpaRepository<GrupoFamiliar, Lo
 
     @Query("SELECT gm FROM GrupoMiembro gm WHERE gm.grupo.id = :grupoId AND gm.usuario.id = :usuarioId")
     Optional<GrupoMiembro> findMiembroEnGrupoPorUsuarioId(@Param("grupoId") Long grupoId, @Param("usuarioId") Long usuarioId);
+
+    @Query("SELECT gm.grupo FROM GrupoMiembro gm WHERE gm.usuario.correo = :correo")
+    List<GrupoFamiliar> findGruposByUsuarioCorreo(@Param("correo") String correo);
 }

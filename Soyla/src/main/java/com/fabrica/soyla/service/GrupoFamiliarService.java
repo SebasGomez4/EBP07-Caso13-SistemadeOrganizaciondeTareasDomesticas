@@ -11,7 +11,6 @@ import com.fabrica.soyla.repository.UsuarioRepository;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-import com.fabrica.soyla.model.MiembroDTO;
 import java.util.List;
 
 @Service
@@ -71,5 +70,9 @@ public class GrupoFamiliarService {
         }
         return dto;
     }).toList();
+}
+    public List<GrupoFamiliar> obtenerMisGrupos(String correo) {
+    List<GrupoFamiliar> grupos = grupoFamiliarRepository.findGruposByUsuarioCorreo(correo);
+    return grupos;
 }
 }

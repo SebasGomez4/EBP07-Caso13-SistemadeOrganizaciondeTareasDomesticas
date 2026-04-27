@@ -8,8 +8,12 @@ import jakarta.validation.Valid;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.security.core.Authentication;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 @RestController
 @RequestMapping("/api/grupos")
@@ -35,4 +39,22 @@ public class GrupoFamiliarController {
         List<MiembroDTO> miembros = grupoFamiliarService.obtenerMiembros(grupoId, token);
         return ResponseEntity.ok(miembros);
     }
+    @GetMapping("/mis-grupos")
+    public ResponseEntity<?> obtenerMisGrupos() {
+    Authentication auth = SecurityContextHolder.getContext().getAuthentication();
+    String correo = (String) auth.getPrincipal();
+    try {
+        List<GrupoFamiliar> grupos = grupoFamiliarService.obtenerMisGrupos(correo);
+        if (grupos.isEmpty()) {
+            Map<String, String> response = new HashMap<>();
+            response.put("mensaje", "No perteneces a ningún grupo familiar");
+            return ResponseEntity.ok(response);
+        }
+        return ResponseEntity.ok(grupos);
+    } catch (IllegalArgumentException e) {
+        Map<String, String> response = new HashMap<>();
+        response.put("mensaje", e.getMessage());
+        return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(response);
+    }
+}
 }

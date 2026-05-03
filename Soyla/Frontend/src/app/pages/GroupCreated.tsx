@@ -3,8 +3,7 @@ import { useNavigate } from "react-router";
 import { Button } from "../components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "../components/ui/card";
 import { CheckCircle2, ArrowRight } from "lucide-react";
-
-const SESSION_TIMEOUT = 300000; // 5 minutos de inactividad
+import { getActiveSession } from "../lib/session";
 
 export function GroupCreated() {
   const navigate = useNavigate();
@@ -12,43 +11,27 @@ export function GroupCreated() {
   const [groupId, setGroupId] = useState("");
 
   useEffect(() => {
-    // Verificar autenticación
-    const session = localStorage.getItem("currentSession");
-    if (!session) {
+    if (!getActiveSession()) {
       navigate("/");
       return;
     }
 
-    const sessionData = JSON.parse(session);
-    const now = Date.now();
-
-    // Verificar si la sesión ha expirado
-    if (now - sessionData.lastActivity >= SESSION_TIMEOUT) {
-      localStorage.removeItem("currentSession");
-      navigate("/");
-      return;
-    }
-
-    // Obtener el último grupo creado
     const lastGroup = localStorage.getItem("lastCreatedGroup");
     if (!lastGroup) {
-      // Si no hay grupo recién creado, redirigir a home
       navigate("/home");
       return;
     }
 
-    const groupData = JSON.parse(lastGroup);
+    const groupData = JSON.parse(lastGroup) as { id: string; name: string };
     setGroupName(groupData.name);
     setGroupId(groupData.id);
   }, [navigate]);
 
   const handleEnterGroup = () => {
-    // Navegar al grupo con el ID
     navigate(`/grupo/${groupId}`);
   };
 
   const handleGoHome = () => {
-    // Limpiar el grupo temporal
     localStorage.removeItem("lastCreatedGroup");
     navigate("/home");
   };
@@ -62,9 +45,9 @@ export function GroupCreated() {
               <CheckCircle2 className="h-10 w-10 text-green-600" />
             </div>
           </div>
-          <CardTitle className="text-2xl">¡Grupo creado exitosamente!</CardTitle>
+          <CardTitle className="text-2xl">Grupo creado exitosamente</CardTitle>
           <CardDescription className="text-base">
-            Tu grupo familiar está listo para ser utilizado
+            Tu grupo familiar esta listo para ser utilizado
           </CardDescription>
         </CardHeader>
 
@@ -91,11 +74,7 @@ export function GroupCreated() {
               <ArrowRight className="h-4 w-4" />
             </Button>
 
-            <Button
-              onClick={handleGoHome}
-              variant="outline"
-              className="w-full"
-            >
+            <Button onClick={handleGoHome} variant="outline" className="w-full">
               Volver al inicio
             </Button>
           </div>

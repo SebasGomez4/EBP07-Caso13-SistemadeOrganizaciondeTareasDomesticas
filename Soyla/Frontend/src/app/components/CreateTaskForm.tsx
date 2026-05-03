@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, type FormEvent } from "react";
 import { Button } from "./ui/button";
 import { Input } from "./ui/input";
 import { Textarea } from "./ui/textarea";
@@ -19,6 +19,7 @@ import {
   DialogTrigger,
 } from "./ui/dialog";
 import { ClipboardList, CheckCircle2, Loader2 } from "lucide-react";
+import { ApiError, createTask } from "../lib/api";
 
 interface CreateTaskFormProps {
   groupId: string;
@@ -44,103 +45,60 @@ export function CreateTaskForm({ groupId, onTaskCreated }: CreateTaskFormProps) 
     deadline: "",
     frequency: "ninguna",
   });
-
   const [errors, setErrors] = useState<FormErrors>({});
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [showSuccess, setShowSuccess] = useState(false);
   const [isOpen, setIsOpen] = useState(false);
 
-  // Validación del nombre de la tarea
   const validateTaskName = (name: string): string | null => {
-    if (!name.trim()) {
-      return "El nombre de la tarea es obligatorio";
-    }
-
-    // Verificar si solo tiene caracteres especiales (sin letras ni números)
-    const onlySpecialChars = /^[^a-zA-Z0-9]+$/.test(name.trim());
-    if (onlySpecialChars) {
-      return "El nombre de la tarea no puede contener sólo caracteres especiales";
-    }
-
-    // Verificar si solo tiene números
-    const onlyNumbers = /^[0-9]+$/.test(name.trim());
-    if (onlyNumbers) {
-      return "El nombre de la tarea no puede contener sólo números";
-    }
-
+    if (!name.trim()) return "El nombre de la tarea es obligatorio";
+    if (/^[^a-zA-Z0-9]+$/.test(name.trim())) return "El nombre de la tarea no puede contener solo caracteres especiales";
+    if (/^[0-9]+$/.test(name.trim())) return "El nombre de la tarea no puede contener solo numeros";
     return null;
   };
 
-  // Validación de la fecha límite
   const validateDeadline = (deadline: string, frequency: string): string | null => {
-    // Si tiene frecuencia definida, no se requiere fecha límite
-    if (frequency !== "ninguna") {
-      return null;
-    }
-
-    if (!deadline) {
-      return "La fecha límite es obligatoria";
-    }
+    if (frequency !== "ninguna") return null;
+    if (!deadline) return "La fecha limite es obligatoria";
 
     const selectedDate = new Date(deadline);
     const today = new Date();
     today.setHours(0, 0, 0, 0);
 
     if (selectedDate < today) {
-      return "La fecha límite no es válida (no puede ser anterior a la fecha actual)";
+      return "La fecha limite no es valida";
     }
 
     return null;
   };
 
-  // Manejo del envío del formulario
-  const handleSubmit = async (e: React.FormEvent) => {
+  const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
 
-    // Validar todos los campos
     const nameError = validateTaskName(formData.name);
     const deadlineError = validateDeadline(formData.deadline, formData.frequency);
 
     const newErrors: FormErrors = {};
     if (nameError) newErrors.name = nameError;
     if (deadlineError) newErrors.deadline = deadlineError;
-
     setErrors(newErrors);
 
-    // Si hay errores, no continuar
     if (Object.keys(newErrors).length > 0) {
       return;
     }
 
-    // Simular tiempo de procesamiento (máximo 3 segundos)
     setIsSubmitting(true);
 
-    // Crear la tarea (con campos mutuamente excluyentes)
-    const newTask = {
-      id: `task-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
-      groupId: groupId,
-      name: formData.name.trim(),
-      description: formData.description.trim(),
-      // Solo guardar deadline si no hay frecuencia definida
-      deadline: formData.frequency === "ninguna" ? formData.deadline : "",
-      // Guardar frecuencia según selección
-      frequency: formData.frequency,
-      createdAt: Date.now(),
-      status: "pending",
-    };
+    try {
+      await createTask(groupId, {
+        name: formData.name.trim(),
+        description: formData.description.trim(),
+        deadline: formData.frequency === "ninguna" ? formData.deadline : undefined,
+        frequency: formData.frequency,
+      });
 
-    // Guardar en localStorage
-    const existingTasks = JSON.parse(localStorage.getItem("familyTasks") || "[]");
-    existingTasks.push(newTask);
-    localStorage.setItem("familyTasks", JSON.stringify(existingTasks));
-
-    // Simular envío de notificaciones (indicación visual)
-    setTimeout(() => {
-      setIsSubmitting(false);
       setShowSuccess(true);
       setIsOpen(false);
-
-      // Limpiar el formulario
       setFormData({
         name: "",
         description: "",
@@ -148,17 +106,26 @@ export function CreateTaskForm({ groupId, onTaskCreated }: CreateTaskFormProps) 
         frequency: "ninguna",
       });
 
-      // Ocultar mensaje de éxito después de 4 segundos
-      setTimeout(() => {
-        setShowSuccess(false);
-        if (onTaskCreated) {
-          onTaskCreated();
-        }
-      }, 4000);
-    }, 1500); // Simular 1.5 segundos de procesamiento
+      if (onTaskCreated) {
+        onTaskCreated();
+      }
+
+      window.setTimeout(() => setShowSuccess(false), 4000);
+    } catch (caughtError) {
+      const message = caughtError instanceof ApiError
+        ? caughtError.message
+        : "No fue posible crear la tarea.";
+
+      if (message.toLowerCase().includes("fecha")) {
+        setErrors((prev) => ({ ...prev, deadline: message }));
+      } else {
+        setErrors((prev) => ({ ...prev, name: message }));
+      }
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
-  // Obtener la fecha mínima (hoy)
   const getTodayDate = () => {
     const today = new Date();
     const year = today.getFullYear();
@@ -169,14 +136,13 @@ export function CreateTaskForm({ groupId, onTaskCreated }: CreateTaskFormProps) 
 
   return (
     <>
-      {/* Mensaje de éxito */}
       {showSuccess && (
         <div className="fixed top-4 right-4 z-50 flex items-center gap-3 bg-white border border-green-200 shadow-lg rounded-lg px-5 py-3 transition-all max-w-md">
           <CheckCircle2 className="h-5 w-5 text-green-500 shrink-0" />
           <div>
             <p className="text-sm font-medium text-gray-900">Tarea creada exitosamente</p>
             <p className="text-xs text-gray-600 mt-0.5">
-              Se ha notificado a todos los miembros del grupo familiar
+              La tarea ya esta disponible para todos los miembros del grupo
             </p>
           </div>
         </div>
@@ -205,7 +171,6 @@ export function CreateTaskForm({ groupId, onTaskCreated }: CreateTaskFormProps) 
             </DialogDescription>
           </DialogHeader>
           <form onSubmit={handleSubmit} className="space-y-5 mt-4">
-            {/* Nombre de la tarea */}
             <div className="space-y-2">
               <Label htmlFor="taskName">
                 Nombre de la tarea <span className="text-red-500">*</span>
@@ -224,37 +189,25 @@ export function CreateTaskForm({ groupId, onTaskCreated }: CreateTaskFormProps) 
                 className={errors.name ? "border-red-500 focus-visible:ring-red-200" : ""}
                 disabled={isSubmitting}
               />
-              {errors.name && (
-                <p className="text-sm text-red-600 flex items-start gap-1.5">
-                  <span className="inline-block w-1 h-1 bg-red-600 rounded-full mt-1.5"></span>
-                  {errors.name}
-                </p>
-              )}
+              {errors.name && <p className="text-sm text-red-600">{errors.name}</p>}
             </div>
 
-            {/* Descripción */}
             <div className="space-y-2">
-              <Label htmlFor="taskDescription">
-                Descripción
-              </Label>
+              <Label htmlFor="taskDescription">Descripcion</Label>
               <Textarea
                 id="taskDescription"
                 value={formData.description}
-                onChange={(e) => {
-                  setFormData({ ...formData, description: e.target.value });
-                }}
+                onChange={(e) => setFormData({ ...formData, description: e.target.value })}
                 placeholder="Describe los detalles de la tarea..."
                 rows={3}
                 disabled={isSubmitting}
               />
             </div>
 
-            {/* Fecha límite y Frecuencia en columnas */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
-              {/* Fecha límite */}
               <div className="space-y-2">
                 <Label htmlFor="taskDeadline">
-                  Fecha límite {formData.frequency === "ninguna" && <span className="text-red-500">*</span>}
+                  Fecha limite {formData.frequency === "ninguna" && <span className="text-red-500">*</span>}
                 </Label>
                 <Input
                   id="taskDeadline"
@@ -262,36 +215,25 @@ export function CreateTaskForm({ groupId, onTaskCreated }: CreateTaskFormProps) 
                   value={formData.deadline}
                   onChange={(e) => {
                     const newDeadline = e.target.value;
-                    // Si se define fecha límite, resetear frecuencia a "ninguna"
                     setFormData({
                       ...formData,
                       deadline: newDeadline,
-                      frequency: newDeadline ? "ninguna" : formData.frequency
+                      frequency: newDeadline ? "ninguna" : formData.frequency,
                     });
                     if (errors.deadline) {
                       setErrors({ ...errors, deadline: undefined });
                     }
                   }}
                   min={getTodayDate()}
-                  className={`${errors.deadline ? "border-red-500 focus-visible:ring-red-200" : ""} ${
-                    formData.frequency !== "ninguna" ? "disabled:opacity-50 cursor-not-allowed" : ""
-                  }`}
+                  className={errors.deadline ? "border-red-500 focus-visible:ring-red-200" : ""}
                   disabled={isSubmitting || formData.frequency !== "ninguna"}
                 />
                 {formData.frequency !== "ninguna" && (
-                  <p className="text-xs text-gray-500 mt-1">
-                    No disponible cuando se define frecuencia
-                  </p>
+                  <p className="text-xs text-gray-500 mt-1">No disponible cuando se define frecuencia</p>
                 )}
-                {errors.deadline && (
-                  <p className="text-sm text-red-600 flex items-start gap-1.5">
-                    <span className="inline-block w-1 h-1 bg-red-600 rounded-full mt-1.5"></span>
-                    {errors.deadline}
-                  </p>
-                )}
+                {errors.deadline && <p className="text-sm text-red-600">{errors.deadline}</p>}
               </div>
 
-              {/* Frecuencia */}
               <div className="space-y-2">
                 <Label htmlFor="taskFrequency">
                   Frecuencia <span className="text-red-500">*</span>
@@ -299,46 +241,33 @@ export function CreateTaskForm({ groupId, onTaskCreated }: CreateTaskFormProps) 
                 <Select
                   value={formData.frequency}
                   onValueChange={(value) => {
-                    // Si se define frecuencia diferente a "ninguna", limpiar fecha límite
                     setFormData({
                       ...formData,
                       frequency: value,
-                      deadline: value !== "ninguna" ? "" : formData.deadline
+                      deadline: value !== "ninguna" ? "" : formData.deadline,
                     });
                     if (errors.deadline && value !== "ninguna") {
                       setErrors({ ...errors, deadline: undefined });
                     }
                   }}
-                  disabled={isSubmitting || (formData.deadline !== "")}
+                  disabled={isSubmitting || formData.deadline !== ""}
                 >
-                  <SelectTrigger
-                    id="taskFrequency"
-                    className={formData.deadline !== "" ? "disabled:opacity-50 cursor-not-allowed" : ""}
-                  >
+                  <SelectTrigger id="taskFrequency">
                     <SelectValue placeholder="Selecciona la frecuencia" />
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="ninguna">Ninguna</SelectItem>
-                    <SelectItem value="diaria" disabled={formData.deadline !== ""}>
-                      Diaria
-                    </SelectItem>
-                    <SelectItem value="semanal" disabled={formData.deadline !== ""}>
-                      Semanal
-                    </SelectItem>
-                    <SelectItem value="mensual" disabled={formData.deadline !== ""}>
-                      Mensual
-                    </SelectItem>
+                    <SelectItem value="diaria" disabled={formData.deadline !== ""}>Diaria</SelectItem>
+                    <SelectItem value="semanal" disabled={formData.deadline !== ""}>Semanal</SelectItem>
+                    <SelectItem value="mensual" disabled={formData.deadline !== ""}>Mensual</SelectItem>
                   </SelectContent>
                 </Select>
                 {formData.deadline !== "" && (
-                  <p className="text-xs text-gray-500 mt-1">
-                    No disponible cuando se define fecha límite
-                  </p>
+                  <p className="text-xs text-gray-500 mt-1">No disponible cuando se define fecha limite</p>
                 )}
               </div>
             </div>
 
-            {/* Botón de envío */}
             <div className="pt-4 flex justify-end gap-3">
               <Button
                 type="button"

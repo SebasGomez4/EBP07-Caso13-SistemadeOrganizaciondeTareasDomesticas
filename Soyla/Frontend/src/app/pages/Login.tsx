@@ -1,4 +1,4 @@
-import { useState, FormEvent, useEffect } from "react";
+import { useState, type FormEvent, useEffect } from "react";
 import { Link, useNavigate } from "react-router";
 import { Button } from "../components/ui/button";
 import { Input } from "../components/ui/input";
@@ -7,16 +7,11 @@ import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle }
 import { Alert, AlertDescription } from "../components/ui/alert";
 import { AlertCircle, CheckCircle2 } from "lucide-react";
 import { AppLogo } from "../components/AppLogo";
-
-interface User {
-  fullName: string;
-  email: string;
-  password: string;
-}
+import { ApiError, loginUser } from "../lib/api";
+import { getActiveSession, saveSession } from "../lib/session";
 
 const MAX_ATTEMPTS = 3;
-const LOCKOUT_DURATION = 30000; // 30 segundos
-const SESSION_TIMEOUT = 300000; // 5 minutos de inactividad
+const LOCKOUT_DURATION = 30000;
 
 export function Login() {
   const navigate = useNavigate();
@@ -28,72 +23,59 @@ export function Login() {
   const [lockoutTime, setLockoutTime] = useState(0);
   const [showLogoutToast, setShowLogoutToast] = useState(false);
 
-  // Verificar si ya existe una sesión activa
   useEffect(() => {
-    // Mostrar toast si viene de un cierre de sesión exitoso
     if (sessionStorage.getItem("logoutSuccess") === "true") {
       sessionStorage.removeItem("logoutSuccess");
       setShowLogoutToast(true);
-      setTimeout(() => setShowLogoutToast(false), 3500);
+      window.setTimeout(() => setShowLogoutToast(false), 3500);
     }
 
-    const session = localStorage.getItem("currentSession");
-    if (session) {
-      const sessionData = JSON.parse(session);
-      const now = Date.now();
-      
-      // Verificar si la sesión ha expirado
-      if (now - sessionData.lastActivity < SESSION_TIMEOUT) {
-        navigate("/home");
-      } else {
-        // Sesión expirada
-        localStorage.removeItem("currentSession");
-      }
+    if (getActiveSession()) {
+      navigate("/home");
     }
   }, [navigate]);
 
-  // Verificar si la cuenta está bloqueada
   useEffect(() => {
     const lockout = localStorage.getItem("loginLockout");
-    if (lockout) {
-      const lockoutData = JSON.parse(lockout);
-      const now = Date.now();
-      const timeRemaining = LOCKOUT_DURATION - (now - lockoutData.timestamp);
-
-      if (timeRemaining > 0) {
-        setIsLocked(true);
-        setLockoutTime(Math.ceil(timeRemaining / 1000));
-        
-        const interval = setInterval(() => {
-          const newTimeRemaining = LOCKOUT_DURATION - (Date.now() - lockoutData.timestamp);
-          if (newTimeRemaining <= 0) {
-            setIsLocked(false);
-            setLockoutTime(0);
-            localStorage.removeItem("loginLockout");
-            clearInterval(interval);
-          } else {
-            setLockoutTime(Math.ceil(newTimeRemaining / 1000));
-          }
-        }, 1000);
-
-        return () => clearInterval(interval);
-      } else {
-        localStorage.removeItem("loginLockout");
-      }
+    if (!lockout) {
+      return;
     }
+
+    const lockoutData = JSON.parse(lockout) as { timestamp: number };
+    const timeRemaining = LOCKOUT_DURATION - (Date.now() - lockoutData.timestamp);
+
+    if (timeRemaining <= 0) {
+      localStorage.removeItem("loginLockout");
+      return;
+    }
+
+    setIsLocked(true);
+    setLockoutTime(Math.ceil(timeRemaining / 1000));
+
+    const interval = window.setInterval(() => {
+      const newTimeRemaining = LOCKOUT_DURATION - (Date.now() - lockoutData.timestamp);
+      if (newTimeRemaining <= 0) {
+        setIsLocked(false);
+        setLockoutTime(0);
+        localStorage.removeItem("loginLockout");
+        window.clearInterval(interval);
+      } else {
+        setLockoutTime(Math.ceil(newTimeRemaining / 1000));
+      }
+    }, 1000);
+
+    return () => window.clearInterval(interval);
   }, []);
 
-  const handleSubmit = (e: FormEvent) => {
+  const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
     setError("");
 
-    // Verificar si está bloqueado
     if (isLocked) {
       setError(`Cuenta bloqueada temporalmente. Intenta de nuevo en ${lockoutTime} segundos.`);
       return;
     }
 
-    // Validación de campos vacíos (mensaje genérico)
     if (!email.trim() || !password.trim()) {
       setError("Por favor, completa todos los campos");
       return;
@@ -101,45 +83,36 @@ export function Login() {
 
     setLoading(true);
 
-    // Simular tiempo de respuesta del servidor
-    setTimeout(() => {
-      const users: User[] = JSON.parse(localStorage.getItem("users") || "[]");
-      const user = users.find((u: User) => u.email === email);
+    try {
+      const user = await loginUser({
+        email: email.trim(),
+        password,
+      });
 
-      // Validación de credenciales (mensaje genérico para no revelar información)
-      if (!user || user.password !== password) {
-        handleFailedAttempt();
-        setError("Credenciales incorrectas");
-        setLoading(false);
-        return;
-      }
-
-      // Login exitoso
-      const sessionData = {
-        user: {
-          fullName: user.fullName,
-          email: user.email,
-        },
-        lastActivity: Date.now(),
-      };
-
-      localStorage.setItem("currentSession", JSON.stringify(sessionData));
+      saveSession(user);
       localStorage.removeItem("loginAttempts");
       sessionStorage.setItem("loginSuccess", "true");
+
+      const pendingInviteCode = localStorage.getItem("pendingInviteCode");
+      navigate(pendingInviteCode ? `/unirse/${pendingInviteCode}` : "/home");
+    } catch (caughtError) {
+      handleFailedAttempt();
+      setError(
+        caughtError instanceof ApiError
+          ? caughtError.message
+          : "No fue posible iniciar sesion."
+      );
+    } finally {
       setLoading(false);
-      navigate("/home");
-    }, 800);
+    }
   };
 
   const handleFailedAttempt = () => {
-    const attempts = JSON.parse(localStorage.getItem("loginAttempts") || "0");
+    const attempts = Number(localStorage.getItem("loginAttempts") || "0");
     const newAttempts = attempts + 1;
 
     if (newAttempts >= MAX_ATTEMPTS) {
-      const lockoutData = {
-        timestamp: Date.now(),
-      };
-      localStorage.setItem("loginLockout", JSON.stringify(lockoutData));
+      localStorage.setItem("loginLockout", JSON.stringify({ timestamp: Date.now() }));
       localStorage.setItem("loginAttempts", "0");
       setIsLocked(true);
       setLockoutTime(LOCKOUT_DURATION / 1000);
@@ -150,92 +123,88 @@ export function Login() {
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-purple-50 via-blue-50 to-indigo-50 p-4">
-
-      {/* Toast de cierre de sesión exitoso */}
       {showLogoutToast && (
         <div className="fixed top-4 right-4 z-50 flex items-center gap-2 bg-white border border-green-200 shadow-md rounded-full px-4 py-2 transition-all">
           <CheckCircle2 className="h-4 w-4 text-green-500 shrink-0" />
-          <span className="text-sm text-gray-700">Sesión cerrada exitosamente</span>
+          <span className="text-sm text-gray-700">Sesion cerrada exitosamente</span>
         </div>
       )}
 
       <div className="w-full max-w-md">
-        {/* Logo de la aplicación */}
         <div className="flex justify-center mb-8">
           <AppLogo size="md" variant="horizontal" showTagline={true} />
         </div>
 
-      <Card className="w-full shadow-lg border-purple-100">
-        <CardHeader className="space-y-3 pb-6">
-          <CardTitle className="text-2xl text-center">Iniciar sesión</CardTitle>
-          <CardDescription className="text-center">
-            Ingresa tus credenciales para continuar
-          </CardDescription>
-        </CardHeader>
-        <form onSubmit={handleSubmit}>
-          <CardContent className="space-y-5 px-6">
-            {error && (
-              <Alert variant="destructive" className="mb-2">
-                <AlertCircle className="h-4 w-4" />
-                <AlertDescription>{error}</AlertDescription>
-              </Alert>
-            )}
+        <Card className="w-full shadow-lg border-purple-100">
+          <CardHeader className="space-y-3 pb-6">
+            <CardTitle className="text-2xl text-center">Iniciar sesion</CardTitle>
+            <CardDescription className="text-center">
+              Ingresa tus credenciales para continuar
+            </CardDescription>
+          </CardHeader>
+          <form onSubmit={handleSubmit}>
+            <CardContent className="space-y-5 px-6">
+              {error && (
+                <Alert variant="destructive" className="mb-2">
+                  <AlertCircle className="h-4 w-4" />
+                  <AlertDescription>{error}</AlertDescription>
+                </Alert>
+              )}
 
-            {isLocked && (
-              <Alert variant="destructive" className="mb-2">
-                <AlertCircle className="h-4 w-4" />
-                <AlertDescription>
-                  Cuenta bloqueada por múltiples intentos fallidos. 
-                  Espera {lockoutTime} segundos para intentar de nuevo.
-                </AlertDescription>
-              </Alert>
-            )}
+              {isLocked && (
+                <Alert variant="destructive" className="mb-2">
+                  <AlertCircle className="h-4 w-4" />
+                  <AlertDescription>
+                    Cuenta bloqueada por multiples intentos fallidos. Espera {lockoutTime} segundos para intentar de nuevo.
+                  </AlertDescription>
+                </Alert>
+              )}
 
-            <div className="space-y-2.5">
-              <Label htmlFor="email">Correo electrónico</Label>
-              <Input
-                id="email"
-                type="email"
-                placeholder="tu@email.com"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
+              <div className="space-y-2.5">
+                <Label htmlFor="email">Correo electronico</Label>
+                <Input
+                  id="email"
+                  type="email"
+                  placeholder="tu@email.com"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  disabled={loading || isLocked}
+                  className="h-11"
+                />
+              </div>
+
+              <div className="space-y-2.5">
+                <Label htmlFor="password">Contrasena</Label>
+                <Input
+                  id="password"
+                  type="password"
+                  placeholder="••••••"
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  disabled={loading || isLocked}
+                  className="h-11"
+                />
+              </div>
+            </CardContent>
+
+            <CardFooter className="flex flex-col space-y-5 px-6 pt-8 pb-6">
+              <Button
+                type="submit"
+                className="w-full h-11 bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-700 hover:to-blue-700"
                 disabled={loading || isLocked}
-                className="h-11"
-              />
-            </div>
+              >
+                {loading ? "Ingresando..." : "Ingresar"}
+              </Button>
 
-            <div className="space-y-2.5">
-              <Label htmlFor="password">Contraseña</Label>
-              <Input
-                id="password"
-                type="password"
-                placeholder="••••••"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                disabled={loading || isLocked}
-                className="h-11"
-              />
-            </div>
-          </CardContent>
-
-          <CardFooter className="flex flex-col space-y-5 px-6 pt-8 pb-6">
-            <Button
-              type="submit"
-              className="w-full h-11 bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-700 hover:to-blue-700"
-              disabled={loading || isLocked}
-            >
-              {loading ? "Ingresando..." : "Ingresar"}
-            </Button>
-
-            <p className="text-sm text-center text-gray-600">
-              ¿No tienes cuenta?{" "}
-              <Link to="/register" className="text-purple-600 hover:text-purple-700 font-medium">
-                Regístrate aquí
-              </Link>
-            </p>
-          </CardFooter>
-        </form>
-      </Card>
+              <p className="text-sm text-center text-gray-600">
+                No tienes cuenta?{" "}
+                <Link to="/register" className="text-purple-600 hover:text-purple-700 font-medium">
+                  Registrate aqui
+                </Link>
+              </p>
+            </CardFooter>
+          </form>
+        </Card>
       </div>
     </div>
   );

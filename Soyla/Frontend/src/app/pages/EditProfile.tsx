@@ -1,21 +1,13 @@
-import { useEffect, useState, FormEvent } from "react";
+import { useEffect, useState, type FormEvent } from "react";
 import { useNavigate } from "react-router";
 import { Button } from "../components/ui/button";
 import { Input } from "../components/ui/input";
 import { Label } from "../components/ui/label";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "../components/ui/card";
-import { Alert, AlertDescription } from "../components/ui/alert";
 import { LogOut, Home, ArrowLeft, CheckCircle2, AlertCircle, Loader2 } from "lucide-react";
 import { AppLogo } from "../components/AppLogo";
-
-const SESSION_TIMEOUT = 300000;
-
-interface StoredUser {
-  fullName: string;
-  email: string;
-  password: string;
-  phone?: string;
-}
+import { ApiError, getUserProfile, updateUserProfile } from "../lib/api";
+import { clearSession, getActiveSession, markLogoutSuccess, updateSessionUser } from "../lib/session";
 
 function getInitials(name: string): string {
   return name
@@ -28,96 +20,47 @@ function getInitials(name: string): string {
 }
 
 function isValidEmail(email: string): boolean {
-  // Formato estándar: algo@dominio.tld (al menos un punto después del @)
   return /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(email.trim());
 }
 
 function isValidPhone(phone: string): boolean {
-  // Acepta formatos: vacío (opcional), 7–15 dígitos con opcionales +, espacios, guiones
   const cleaned = phone.replace(/[\s\-().]/g, "");
   return cleaned === "" || /^\+?\d{7,15}$/.test(cleaned);
 }
 
 export function EditProfile() {
   const navigate = useNavigate();
-
   const [userName, setUserName] = useState("");
   const [currentEmail, setCurrentEmail] = useState("");
-
   const [email, setEmail] = useState("");
   const [phone, setPhone] = useState("");
-
   const [emailError, setEmailError] = useState("");
   const [phoneError, setPhoneError] = useState("");
-
   const [loading, setLoading] = useState(false);
   const [success, setSuccess] = useState(false);
   const [pageLoading, setPageLoading] = useState(true);
 
-  // ── Inicialización ────────────────────────────────────────────────────────
   useEffect(() => {
-    const session = localStorage.getItem("currentSession");
+    const session = getActiveSession();
     if (!session) {
       navigate("/");
       return;
     }
 
-    const sessionData = JSON.parse(session);
-    const now = Date.now();
+    setUserName(session.user.fullName);
+    setCurrentEmail(session.user.email);
 
-    if (now - sessionData.lastActivity >= SESSION_TIMEOUT) {
-      localStorage.removeItem("currentSession");
-      navigate("/");
-      return;
-    }
+    const loadProfile = async () => {
+      const profile = await getUserProfile(session.user.email);
+      setEmail(profile.email);
+      setPhone(profile.phone ?? "");
+      setPageLoading(false);
+    };
 
-    const sessionEmail: string = sessionData.user.email;
-    const sessionName: string = sessionData.user.fullName;
-
-    setUserName(sessionName);
-    setCurrentEmail(sessionEmail);
-
-    // Leer datos actuales del usuario (incluyendo teléfono si existe)
-    const users: StoredUser[] = JSON.parse(localStorage.getItem("users") || "[]");
-    const storedUser = users.find((u) => u.email === sessionEmail);
-
-    setEmail(sessionEmail);
-    setPhone(storedUser?.phone ?? "");
-
-    setPageLoading(false);
+    void loadProfile();
   }, [navigate]);
 
-  const handleLogout = () => {
-    // Eliminar todos los datos de sesión y autenticación
-    localStorage.removeItem("currentSession");
-    localStorage.removeItem("loginAttempts");
-    sessionStorage.removeItem("loginSuccess");
-
-    // Marcar cierre de sesión exitoso
-    sessionStorage.setItem("logoutSuccess", "true");
-
-    // Redirigir a login
-    navigate("/");
-  };
-
-  const handleGoHome = () => navigate("/home");
-  const handleGoProfile = () => navigate("/perfil");
-
-  // ── Validación en tiempo real ─────────────────────────────────────────────
-  const handleEmailChange = (val: string) => {
-    setEmail(val);
-    if (emailError) setEmailError("");
-    if (success) setSuccess(false);
-  };
-
-  const handlePhoneChange = (val: string) => {
-    setPhone(val);
-    if (phoneError) setPhoneError("");
-    if (success) setSuccess(false);
-  };
-
-  // ── Guardar cambios ───────────────────────────────────────────────────────
-  const handleSubmit = (e: FormEvent) => {
+  const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
     setEmailError("");
     setPhoneError("");
@@ -125,72 +68,68 @@ export function EditProfile() {
 
     let hasError = false;
 
-    // Validar correo (Escenario 2)
     if (!email.trim()) {
-      setEmailError("El correo electrónico no puede estar vacío.");
+      setEmailError("El correo electronico no puede estar vacio.");
       hasError = true;
     } else if (!isValidEmail(email)) {
-      setEmailError("El formato del correo no es válido. Ejemplo: usuario@dominio.com");
+      setEmailError("El formato del correo no es valido. Ejemplo: usuario@dominio.com");
       hasError = true;
     }
 
-    // Validar teléfono (opcional, pero con formato si se ingresa)
     if (phone.trim() && !isValidPhone(phone)) {
-      setPhoneError("El número de teléfono no es válido. Usa entre 7 y 15 dígitos.");
+      setPhoneError("El numero de telefono no es valido. Usa entre 7 y 15 digitos.");
       hasError = true;
     }
 
-    if (hasError) return;
+    if (hasError) {
+      return;
+    }
 
-    // Escenario 4: indicador de carga
+    const session = getActiveSession();
+    if (!session) {
+      navigate("/");
+      return;
+    }
+
     setLoading(true);
 
-    // Simular latencia de red
-    setTimeout(() => {
-      const trimmedEmail = email.trim();
-      const trimmedPhone = phone.trim();
-
-      // Verificar si el nuevo correo ya existe en otro usuario
-      const users: StoredUser[] = JSON.parse(localStorage.getItem("users") || "[]");
-      const emailAlreadyTaken = users.some(
-        (u) => u.email === trimmedEmail && u.email !== currentEmail
-      );
-
-      if (emailAlreadyTaken) {
-        setEmailError("Este correo ya está registrado por otro usuario.");
-        setLoading(false);
-        return;
-      }
-
-      // Actualizar array de usuarios
-      const updatedUsers = users.map((u) => {
-        if (u.email === currentEmail) {
-          return { ...u, email: trimmedEmail, phone: trimmedPhone };
-        }
-        return u;
+    try {
+      const updatedUser = await updateUserProfile(currentEmail, {
+        email: email.trim(),
+        phone: phone.trim(),
       });
-      localStorage.setItem("users", JSON.stringify(updatedUsers));
 
-      // Actualizar sesión activa (Escenario 3: reflejar cambios de inmediato)
-      const session = localStorage.getItem("currentSession");
-      if (session) {
-        const sessionData = JSON.parse(session);
-        sessionData.user.email = trimmedEmail;
-        sessionData.lastActivity = Date.now();
-        localStorage.setItem("currentSession", JSON.stringify(sessionData));
-      }
+      updateSessionUser({
+        fullName: session.user.fullName,
+        email: updatedUser.email,
+      });
 
-      // Actualizar estado local
-      setCurrentEmail(trimmedEmail);
-      setLoading(false);
+      setCurrentEmail(updatedUser.email);
+      setEmail(updatedUser.email);
+      setPhone(updatedUser.phone ?? "");
       setSuccess(true);
+      window.setTimeout(() => setSuccess(false), 4000);
+    } catch (caughtError) {
+      const message = caughtError instanceof ApiError
+        ? caughtError.message
+        : "No fue posible actualizar el perfil.";
 
-      // Ocultar éxito tras 4 segundos
-      setTimeout(() => setSuccess(false), 4000);
-    }, 900);
+      if (message.toLowerCase().includes("correo")) {
+        setEmailError(message);
+      } else {
+        setPhoneError(message);
+      }
+    } finally {
+      setLoading(false);
+    }
   };
 
-  // ── Estado: cargando página ───────────────────────────────────────────────
+  const handleLogout = () => {
+    clearSession();
+    markLogoutSuccess();
+    navigate("/");
+  };
+
   if (pageLoading) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-purple-50 via-blue-50 to-indigo-50 flex items-center justify-center">
@@ -202,26 +141,22 @@ export function EditProfile() {
     );
   }
 
-  // ── Vista principal ───────────────────────────────────────────────────────
   return (
     <div className="min-h-screen bg-gradient-to-br from-purple-50 via-blue-50 to-indigo-50">
-
-      {/* ── Header ── */}
       <div className="bg-white/40 backdrop-blur-sm border-b border-purple-100/50">
         <div className="container mx-auto max-w-6xl px-6 py-4 flex items-center justify-between">
           <AppLogo size="sm" showTagline={false} />
           <div className="flex items-center gap-4">
             <Button
               variant="outline"
-              onClick={handleGoHome}
+              onClick={() => navigate("/home")}
               className="flex items-center gap-2 border-purple-200 hover:bg-purple-50"
             >
               <Home className="h-4 w-4" />
               Inicio
             </Button>
-            {/* Avatar con acceso al perfil */}
             <button
-              onClick={handleGoProfile}
+              onClick={() => navigate("/perfil")}
               title="Ver mi perfil"
               className="w-9 h-9 rounded-full bg-gradient-to-br from-purple-600 to-blue-600 flex items-center justify-center hover:opacity-90 transition-opacity ring-2 ring-purple-200 hover:ring-purple-400 focus:outline-none"
             >
@@ -235,16 +170,13 @@ export function EditProfile() {
               className="flex items-center gap-2 border-purple-200 hover:bg-purple-50"
             >
               <LogOut className="h-4 w-4" />
-              Cerrar sesión
+              Cerrar sesion
             </Button>
           </div>
         </div>
       </div>
 
-      {/* ── Contenido principal ── */}
       <div className="container mx-auto max-w-6xl px-6 py-12">
-
-        {/* Título de sección */}
         <div className="text-center mb-10">
           <h1 className="text-3xl mb-2">
             Editar{" "}
@@ -253,15 +185,14 @@ export function EditProfile() {
             </span>
           </h1>
           <p className="text-gray-500 text-sm">
-            Actualiza tu correo electrónico y número de teléfono
+            Actualiza tu correo electronico y numero de telefono
           </p>
         </div>
 
-        {/* Tarjeta del formulario */}
         <div className="max-w-md mx-auto">
           <Card className="shadow-sm border-purple-100">
             <CardHeader className="pb-2 pt-8 px-8">
-              <CardTitle className="text-lg text-gray-800">Información de contacto</CardTitle>
+              <CardTitle className="text-lg text-gray-800">Informacion de contacto</CardTitle>
               <CardDescription className="text-sm text-gray-500">
                 Modifica los datos que deseas actualizar y presiona{" "}
                 <span className="text-purple-600">Guardar Cambios</span>.
@@ -271,8 +202,6 @@ export function EditProfile() {
             <CardContent className="px-8 pb-8 pt-4">
               <form onSubmit={handleSubmit} noValidate>
                 <div className="space-y-5">
-
-                  {/* ── Alerta de éxito (Escenario 1 / 3) ── */}
                   {success && (
                     <div className="flex items-start gap-3 bg-green-50 border border-green-200 rounded-xl px-4 py-3">
                       <CheckCircle2 className="h-4 w-4 text-green-500 mt-0.5 shrink-0" />
@@ -282,17 +211,20 @@ export function EditProfile() {
                     </div>
                   )}
 
-                  {/* ── Campo: Correo electrónico ── */}
                   <div className="space-y-2">
                     <Label htmlFor="email" className="text-sm text-gray-700">
-                      Correo electrónico
+                      Correo electronico
                     </Label>
                     <Input
                       id="email"
                       type="email"
                       placeholder="usuario@dominio.com"
                       value={email}
-                      onChange={(e) => handleEmailChange(e.target.value)}
+                      onChange={(e) => {
+                        setEmail(e.target.value);
+                        if (emailError) setEmailError("");
+                        if (success) setSuccess(false);
+                      }}
                       disabled={loading}
                       className={`h-11 transition-colors ${
                         emailError
@@ -308,18 +240,20 @@ export function EditProfile() {
                     )}
                   </div>
 
-                  {/* ── Campo: Número de teléfono ── */}
                   <div className="space-y-2">
                     <Label htmlFor="phone" className="text-sm text-gray-700">
-                      Número de teléfono{" "}
-                      <span className="text-gray-400 text-xs">(opcional)</span>
+                      Numero de telefono <span className="text-gray-400 text-xs">(opcional)</span>
                     </Label>
                     <Input
                       id="phone"
                       type="tel"
                       placeholder="+57 300 000 0000"
                       value={phone}
-                      onChange={(e) => handlePhoneChange(e.target.value)}
+                      onChange={(e) => {
+                        setPhone(e.target.value);
+                        if (phoneError) setPhoneError("");
+                        if (success) setSuccess(false);
+                      }}
                       disabled={loading}
                       className={`h-11 transition-colors ${
                         phoneError
@@ -335,10 +269,8 @@ export function EditProfile() {
                     )}
                   </div>
 
-                  {/* ── Separador ── */}
                   <div className="border-t border-purple-50 pt-2" />
 
-                  {/* ── Botón principal: Guardar Cambios (Escenarios 1 y 4) ── */}
                   <Button
                     type="submit"
                     disabled={loading}
@@ -354,11 +286,10 @@ export function EditProfile() {
                     )}
                   </Button>
 
-                  {/* ── Botón secundario: volver al perfil ── */}
                   <Button
                     type="button"
                     variant="outline"
-                    onClick={handleGoProfile}
+                    onClick={() => navigate("/perfil")}
                     disabled={loading}
                     className="w-full h-11 border-purple-200 hover:bg-purple-50 flex items-center justify-center gap-2"
                   >
@@ -371,7 +302,7 @@ export function EditProfile() {
           </Card>
 
           <p className="text-xs text-gray-400 text-center mt-5">
-            Solo se permite modificar el correo electrónico y el número de teléfono.
+            Solo se permite modificar el correo electronico y el numero de telefono.
           </p>
         </div>
       </div>

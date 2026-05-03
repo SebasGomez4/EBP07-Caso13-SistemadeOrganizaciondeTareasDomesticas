@@ -12,23 +12,8 @@ import {
   RefreshCw,
   Home,
 } from "lucide-react";
-
-const SESSION_TIMEOUT = 300000;
-
-interface InviteRecord {
-  code: string;
-  groupId: string;
-  groupName: string;
-  createdAt: number;
-  expiresAt: number;
-}
-
-interface FamilyGroup {
-  id: string;
-  name: string;
-  createdBy: string;
-  createdAt: number;
-}
+import { ApiError, joinInvite, lookupInvite } from "../lib/api";
+import { getActiveSession, touchSession } from "../lib/session";
 
 type InviteState =
   | "loading"
@@ -46,117 +31,57 @@ export function InviteAccess() {
   const [groupId, setGroupId] = useState("");
 
   useEffect(() => {
-    // Escenario 6: completarse en < 2 segundos — simulamos ~800ms de validación
-    const timer = setTimeout(() => {
-      processInvite();
+    const timer = window.setTimeout(() => {
+      void processInvite();
     }, 800);
 
-    return () => clearTimeout(timer);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+    return () => window.clearTimeout(timer);
   }, [inviteCode]);
 
-  function processInvite() {
+  const processInvite = async () => {
     if (!inviteCode) {
       setState("invalid");
       return;
     }
 
-    // Recuperar todos los invites registrados
-    const invites: InviteRecord[] = JSON.parse(
-      localStorage.getItem("familyInvites") || "[]"
-    );
-    const invite = invites.find((i) => i.code === inviteCode);
+    try {
+      const invite = await lookupInvite(inviteCode);
+      setGroupName(invite.groupName);
+      setGroupId(invite.groupId);
 
-    // Escenario 4: enlace inválido
-    if (!invite) {
+      const session = getActiveSession();
+      if (!session) {
+        localStorage.setItem("pendingInviteCode", inviteCode);
+        setState("unauthenticated");
+        return;
+      }
+
+      const response = await joinInvite(inviteCode, {
+        userEmail: session.user.email,
+      });
+
+      touchSession();
+      localStorage.removeItem("pendingInviteCode");
+
+      setGroupName(response.group.name);
+      setGroupId(response.group.id);
+      setState(response.alreadyMember ? "already_member" : "success");
+    } catch (caughtError) {
+      if (caughtError instanceof ApiError) {
+        if (caughtError.status === 401) {
+          localStorage.setItem("pendingInviteCode", inviteCode);
+          setState("unauthenticated");
+          return;
+        }
+
+        if (caughtError.status === 410) {
+          setState("expired");
+          return;
+        }
+      }
+
       setState("invalid");
-      return;
     }
-
-    // Escenario 5 / 4: enlace expirado (vigencia 72 horas)
-    if (Date.now() > invite.expiresAt) {
-      setState("expired");
-      return;
-    }
-
-    // Verificar si el grupo sigue existiendo
-    const groups: FamilyGroup[] = JSON.parse(
-      localStorage.getItem("familyGroups") || "[]"
-    );
-    const group = groups.find((g) => g.id === invite.groupId);
-    if (!group) {
-      setState("invalid");
-      return;
-    }
-
-    setGroupName(invite.groupName || group.name);
-    setGroupId(invite.groupId);
-
-    // Verificar sesión activa
-    const session = localStorage.getItem("currentSession");
-    if (!session) {
-      // Guardar el código pendiente para retomar tras el login
-      localStorage.setItem("pendingInviteCode", inviteCode);
-      setState("unauthenticated");
-      return;
-    }
-
-    const sessionData = JSON.parse(session);
-    const now = Date.now();
-
-    if (now - sessionData.lastActivity >= SESSION_TIMEOUT) {
-      localStorage.removeItem("currentSession");
-      localStorage.setItem("pendingInviteCode", inviteCode);
-      setState("unauthenticated");
-      return;
-    }
-
-    const userEmail: string = sessionData.user.email;
-
-    // Escenario 3: usuario ya es miembro
-    const members: Record<string, string[]> = JSON.parse(
-      localStorage.getItem("groupMembers") || "{}"
-    );
-    const groupMembers = members[invite.groupId] || [];
-
-    if (groupMembers.includes(userEmail)) {
-      setState("already_member");
-      return;
-    }
-
-    // Escenario 2: agregar usuario al grupo
-    const updatedMembers = { ...members };
-    updatedMembers[invite.groupId] = [...groupMembers, userEmail];
-    localStorage.setItem("groupMembers", JSON.stringify(updatedMembers));
-
-    // Asignar rol inicial de "Colaborador" al nuevo miembro
-    const groupRoles: Record<string, Record<string, string>> = JSON.parse(
-      localStorage.getItem("groupRoles") || "{}"
-    );
-    if (!groupRoles[invite.groupId]) {
-      groupRoles[invite.groupId] = {};
-    }
-    if (!groupRoles[invite.groupId][userEmail]) {
-      groupRoles[invite.groupId][userEmail] = "Colaborador";
-      localStorage.setItem("groupRoles", JSON.stringify(groupRoles));
-    }
-
-    // Actualizar actividad de sesión
-    sessionData.lastActivity = Date.now();
-    localStorage.setItem("currentSession", JSON.stringify(sessionData));
-
-    // Limpiar pending invite si existía
-    localStorage.removeItem("pendingInviteCode");
-
-    setState("success");
-  }
-
-  // ── Solicitar nuevo enlace ─────────────────────────────────────────────────
-  // Redirige al grupo (si el usuario tiene acceso) para que el administrador
-  // genere uno nuevo. Como no se puede saber quién es el admin desde aquí,
-  // se muestra un mensaje orientativo.
-  const handleRequestNew = () => {
-    navigate("/home");
   };
 
   const handleGoToLogin = () => {
@@ -171,10 +96,8 @@ export function InviteAccess() {
     navigate(`/grupo/${groupId}`);
   };
 
-  // ── RENDER ────────────────────────────────────────────────────────────────
   return (
     <div className="min-h-screen bg-gradient-to-br from-purple-50 via-blue-50 to-indigo-50 flex flex-col">
-      {/* Header mínimo */}
       <div className="bg-white/40 backdrop-blur-sm border-b border-purple-100/50">
         <div className="container mx-auto max-w-6xl px-6 py-4 flex items-center justify-between">
           <AppLogo size="sm" showTagline={false} />
@@ -191,11 +114,8 @@ export function InviteAccess() {
         </div>
       </div>
 
-      {/* Contenido centrado */}
       <div className="flex-1 flex items-center justify-center px-6 py-12">
         <div className="w-full max-w-md">
-
-          {/* ── Estado: Cargando / Validando ── */}
           {state === "loading" && (
             <Card className="shadow-sm border-purple-100">
               <CardContent className="pt-12 pb-12">
@@ -204,9 +124,9 @@ export function InviteAccess() {
                     <Loader2 className="h-8 w-8 text-purple-500 animate-spin" />
                   </div>
                   <div className="space-y-2">
-                    <h2 className="text-xl text-gray-800">Validando invitación...</h2>
+                    <h2 className="text-xl text-gray-800">Validando invitacion...</h2>
                     <p className="text-gray-500 text-sm">
-                      Estamos procesando tu enlace de invitación.
+                      Estamos procesando tu enlace de invitacion.
                     </p>
                   </div>
                 </div>
@@ -214,7 +134,6 @@ export function InviteAccess() {
             </Card>
           )}
 
-          {/* ── Estado: No autenticado ── */}
           {state === "unauthenticated" && (
             <Card className="shadow-sm border-purple-100">
               <CardContent className="pt-10 pb-10">
@@ -223,10 +142,9 @@ export function InviteAccess() {
                     <LogIn className="h-8 w-8 text-blue-500" />
                   </div>
                   <div className="space-y-2">
-                    <h2 className="text-xl text-gray-800">Inicia sesión para continuar</h2>
+                    <h2 className="text-xl text-gray-800">Inicia sesion para continuar</h2>
                     <p className="text-gray-500 text-sm">
-                      Necesitas iniciar sesión para unirte al grupo familiar.
-                      El enlace seguirá siendo válido.
+                      Necesitas iniciar sesion para unirte al grupo familiar.
                     </p>
                   </div>
                   <div className="w-full space-y-3">
@@ -235,10 +153,10 @@ export function InviteAccess() {
                       className="w-full h-11 bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-700 hover:to-blue-700 flex items-center justify-center gap-2"
                     >
                       <LogIn className="h-4 w-4" />
-                      Iniciar sesión
+                      Iniciar sesion
                     </Button>
                     <p className="text-xs text-gray-400 text-center">
-                      Después de iniciar sesión, vuelve a este enlace para unirte al grupo.
+                      Despues de iniciar sesion, volveras automaticamente a esta invitacion.
                     </p>
                   </div>
                 </div>
@@ -246,7 +164,6 @@ export function InviteAccess() {
             </Card>
           )}
 
-          {/* ── Estado: Éxito (Escenario 2) ── */}
           {state === "success" && (
             <Card className="shadow-sm border-green-100">
               <CardContent className="pt-10 pb-10">
@@ -255,11 +172,10 @@ export function InviteAccess() {
                     <CheckCircle2 className="h-8 w-8 text-green-500" />
                   </div>
                   <div className="space-y-2">
-                    <h2 className="text-xl text-gray-800">¡Te has unido al grupo!</h2>
+                    <h2 className="text-xl text-gray-800">Te has unido al grupo</h2>
                     <p className="text-gray-500 text-sm">
                       Ahora eres miembro de{" "}
                       <span className="text-purple-600 font-medium">{groupName}</span>.
-                      Puedes empezar a gestionar las tareas del hogar junto a tu familia.
                     </p>
                   </div>
                   <div className="w-full space-y-3">
@@ -282,7 +198,6 @@ export function InviteAccess() {
             </Card>
           )}
 
-          {/* ── Estado: Ya es miembro (Escenario 3) ── */}
           {state === "already_member" && (
             <Card className="shadow-sm border-blue-100">
               <CardContent className="pt-10 pb-10">
@@ -295,7 +210,6 @@ export function InviteAccess() {
                     <p className="text-gray-500 text-sm">
                       Ya eres miembro de{" "}
                       <span className="text-purple-600 font-medium">{groupName}</span>.
-                      No es necesario unirte de nuevo.
                     </p>
                   </div>
                   <div className="w-full space-y-3">
@@ -318,7 +232,6 @@ export function InviteAccess() {
             </Card>
           )}
 
-          {/* ── Estado: Enlace inválido (Escenario 4) ── */}
           {state === "invalid" && (
             <Card className="shadow-sm border-red-100">
               <CardContent className="pt-10 pb-10">
@@ -327,30 +240,25 @@ export function InviteAccess() {
                     <XCircle className="h-8 w-8 text-red-400" />
                   </div>
                   <div className="space-y-2">
-                    <h2 className="text-xl text-red-600">Enlace no válido</h2>
+                    <h2 className="text-xl text-red-600">Enlace no valido</h2>
                     <p className="text-gray-500 text-sm">
-                      El enlace de invitación que usaste no es válido.
-                      Puede que haya sido eliminado o nunca existió.
+                      El enlace de invitacion que usaste no es valido o ya no existe.
                     </p>
                   </div>
                   <div className="w-full space-y-3">
                     <Button
-                      onClick={handleRequestNew}
+                      onClick={handleGoHome}
                       className="w-full h-11 bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-700 hover:to-blue-700 flex items-center justify-center gap-2"
                     >
                       <RefreshCw className="h-4 w-4" />
-                      Solicitar nuevo enlace
+                      Volver al inicio
                     </Button>
-                    <p className="text-xs text-gray-400 text-center">
-                      Pide al administrador del grupo que genere un nuevo enlace de invitación.
-                    </p>
                   </div>
                 </div>
               </CardContent>
             </Card>
           )}
 
-          {/* ── Estado: Enlace expirado (Escenario 4 / 5) ── */}
           {state === "expired" && (
             <Card className="shadow-sm border-orange-100">
               <CardContent className="pt-10 pb-10">
@@ -361,27 +269,22 @@ export function InviteAccess() {
                   <div className="space-y-2">
                     <h2 className="text-xl text-orange-600">Enlace expirado</h2>
                     <p className="text-gray-500 text-sm">
-                      Este enlace de invitación ha superado su vigencia de 72 horas
-                      y ya no está activo.
+                      Este enlace de invitacion ha superado su vigencia de 72 horas.
                     </p>
                   </div>
                   <div className="w-full space-y-3">
                     <Button
-                      onClick={handleRequestNew}
+                      onClick={handleGoHome}
                       className="w-full h-11 bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-700 hover:to-blue-700 flex items-center justify-center gap-2"
                     >
                       <RefreshCw className="h-4 w-4" />
                       Solicitar nuevo enlace
                     </Button>
-                    <p className="text-xs text-gray-400 text-center">
-                      Pide al administrador del grupo que genere un nuevo enlace de invitación.
-                    </p>
                   </div>
                 </div>
               </CardContent>
             </Card>
           )}
-
         </div>
       </div>
     </div>

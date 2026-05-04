@@ -1,4 +1,11 @@
-const RAW_API_BASE_URL = import.meta.env.VITE_API_URL || "http://localhost:8080/api";
+const DEFAULT_LOCAL_API_BASE_URL = "http://localhost:8080/api";
+const DEFAULT_PRODUCTION_API_BASE_URL = "https://soyla-api.onrender.com/api";
+
+const RAW_API_BASE_URL =
+  import.meta.env.VITE_API_URL ||
+  (typeof window !== "undefined" && window.location.hostname === "localhost"
+    ? DEFAULT_LOCAL_API_BASE_URL
+    : DEFAULT_PRODUCTION_API_BASE_URL);
 
 export const API_BASE_URL = RAW_API_BASE_URL.replace(/\/+$/, "");
 

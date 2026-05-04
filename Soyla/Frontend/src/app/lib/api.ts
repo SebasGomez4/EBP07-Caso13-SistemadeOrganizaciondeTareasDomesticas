@@ -85,11 +85,16 @@ export interface Task {
 }
 
 async function request<T>(path: string, options: RequestOptions = {}): Promise<T> {
+  const headers =
+    options.body === undefined
+      ? undefined
+      : {
+          "Content-Type": "application/json",
+        };
+
   const response = await fetch(`${API_BASE_URL}${path}`, {
     method: options.method || "GET",
-    headers: {
-      "Content-Type": "application/json",
-    },
+    headers,
     body: options.body === undefined ? undefined : JSON.stringify(options.body),
   });
 

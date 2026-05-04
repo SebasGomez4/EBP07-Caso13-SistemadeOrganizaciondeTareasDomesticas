@@ -56,6 +56,7 @@ Configura el proyecto apuntando a `Soyla/Frontend` y usa:
 - Variable: `VITE_API_URL=https://TU-BACKEND.onrender.com/api`
 
 El archivo `vercel.json` ya agrega el rewrite para que las rutas del SPA funcionen.
+Configura `VITE_API_URL` en `Production` y `Preview` dentro de Vercel para que ambos entornos usen el backend correcto.
 
 ### Backend en Render con Docker
 
@@ -63,10 +64,11 @@ Configura el servicio web apuntando a `Soyla/` para que Render use el `Dockerfil
 
 Variables recomendadas:
 
-- `APP_CORS_ALLOWED_ORIGINS=https://TU-FRONTEND.vercel.app`
+- `APP_CORS_ALLOWED_ORIGINS=https://TU-FRONTEND.vercel.app,https://*.vercel.app`
 - `SPRING_DATASOURCE_URL=jdbc:h2:file:/app/data/soyla-db;DB_CLOSE_ON_EXIT=FALSE`
 
 Si quieres persistencia real en Render, monta un disco y conserva la ruta `/app/data`.
+Si usas `rootDir: Soyla`, deja `dockerfilePath` y `dockerContext` relativos a esa carpeta.
 
 ## Verificacion realizada
 

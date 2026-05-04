@@ -10,13 +10,16 @@ Variables:
 
 ```env
 APP_CORS_ALLOWED_ORIGINS=https://TU-PROYECTO.vercel.app,https://*.vercel.app
-SPRING_DATASOURCE_URL=jdbc:h2:file:/app/data/soyla-db;DB_CLOSE_ON_EXIT=FALSE
+DATABASE_URL=<conexion de Render Postgres>
+DATABASE_USERNAME=<usuario de Render Postgres>
+DATABASE_PASSWORD=<password de Render Postgres>
 ```
 
 Importante:
 
 - Si usas `rootDir: Soyla`, en `render.yaml` deja `dockerfilePath` y `dockerContext` relativos a esa carpeta (`./Dockerfile` y `.`).
 - Para evitar errores de CORS en deploys preview de Vercel, permite tambien `https://*.vercel.app`.
+- En Render Free no hay discos persistentes para web services; para no perder usuarios y tareas usa Render Postgres.
 
 ## Vercel
 

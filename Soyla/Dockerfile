@@ -15,11 +15,8 @@ FROM eclipse-temurin:17-jre
 WORKDIR /app
 
 ENV PORT=8080
-ENV SPRING_DATASOURCE_URL=jdbc:h2:file:/app/data/soyla-db;DB_CLOSE_ON_EXIT=FALSE
 
 COPY --from=build /app/target/*.jar app.jar
-
-RUN mkdir -p /app/data
 
 EXPOSE 8080
 

@@ -3,7 +3,7 @@
 ## Descripcion
 `Soyla` es una aplicacion para organizar tareas del hogar entre miembros de una familia o convivencia. El proyecto queda separado en:
 
-- `Soyla/`: backend Spring Boot con API REST y persistencia H2.
+- `Soyla/`: backend Spring Boot con API REST. En local usa H2 por defecto y en Render Free puede persistir con Postgres.
 - `Soyla/Frontend`: frontend React + Vite preparado para consumir la API desde `VITE_API_URL`.
 
 ## Funcionalidades integradas
@@ -65,9 +65,11 @@ Configura el servicio web apuntando a `Soyla/` para que Render use el `Dockerfil
 Variables recomendadas:
 
 - `APP_CORS_ALLOWED_ORIGINS=https://TU-FRONTEND.vercel.app,https://*.vercel.app`
-- `SPRING_DATASOURCE_URL=jdbc:h2:file:/app/data/soyla-db;DB_CLOSE_ON_EXIT=FALSE`
+- `DATABASE_URL=<conexion de Render Postgres>`
+- `DATABASE_USERNAME=<usuario de Render Postgres>`
+- `DATABASE_PASSWORD=<password de Render Postgres>`
 
-Si quieres persistencia real en Render, monta un disco y conserva la ruta `/app/data`.
+Para el plan gratuito de Render, usa Postgres en lugar de H2. Los discos persistentes no estan disponibles en Free, asi que la persistencia debe venir de la base administrada.
 Si usas `rootDir: Soyla`, deja `dockerfilePath` y `dockerContext` relativos a esa carpeta.
 
 ## Verificacion realizada

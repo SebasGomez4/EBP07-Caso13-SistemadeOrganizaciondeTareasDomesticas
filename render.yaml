@@ -1,19 +1,31 @@
+databases:
+  - name: soyla-db
+    plan: free
+    region: virginia
+
 services:
   - type: web
     name: soyla-api
     runtime: docker
-    branch: Front
-    plan: starter
+    plan: free
+    region: virginia
     rootDir: Soyla
     dockerfilePath: ./Dockerfile
     dockerContext: .
     healthCheckPath: /api/health
+    autoDeployTrigger: commit
     envVars:
       - key: APP_CORS_ALLOWED_ORIGINS
         value: https://*.vercel.app,https://soyla.vercel.app
-      - key: SPRING_DATASOURCE_URL
-        value: jdbc:h2:file:/app/data/soyla-db;DB_CLOSE_ON_EXIT=FALSE
-    disk:
-      name: soyla-data
-      mountPath: /app/data
-      sizeGB: 1
+      - key: DATABASE_URL
+        fromDatabase:
+          name: soyla-db
+          property: connectionString
+      - key: DATABASE_USERNAME
+        fromDatabase:
+          name: soyla-db
+          property: user
+      - key: DATABASE_PASSWORD
+        fromDatabase:
+          name: soyla-db
+          property: password

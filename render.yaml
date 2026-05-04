@@ -2,6 +2,7 @@ services:
   - type: web
     name: soyla-api
     runtime: docker
+    branch: Front
     plan: starter
     rootDir: Soyla
     dockerfilePath: ./Soyla/Dockerfile

@@ -1,0 +1,128 @@
+version: 2
+updates:
+  # =========================================================================
+  # BACKEND - Maven Dependencies
+  # =========================================================================
+  - package-ecosystem: "maven"
+    directory: "/Soyla"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+      time: "03:00"
+      timezone: "UTC"
+    
+    open-pull-requests-limit: 3
+    assignees:
+      - "vanesa"  # Cambiar al usuario responsable
+    reviewers:
+      - "vanesa"
+    labels:
+      - "dependencies"
+      - "backend"
+      - "java"
+    
+    commit-message:
+      prefix: "chore(deps):"
+      prefix-development: "chore(deps-dev):"
+      include: "scope"
+    
+    pull-request-branch-name:
+      separator: "/"
+    
+    allow:
+      - dependency-type: "all"
+    
+    ignore:
+      # Ignorar actualizaciones principales de Spring Boot por ahora
+      # (déjalas para upgrades planificados)
+      - dependency-name: "org.springframework.boot:spring-boot-starter-parent"
+        update-types:
+          - "version-update:semver-major"
+
+  # =========================================================================
+  # FRONTEND - npm Dependencies
+  # =========================================================================
+  - package-ecosystem: "npm"
+    directory: "/Soyla/Frontend"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+      time: "04:00"
+      timezone: "UTC"
+    
+    open-pull-requests-limit: 5
+    assignees:
+      - "vanesa"
+    reviewers:
+      - "vanesa"
+    labels:
+      - "dependencies"
+      - "frontend"
+      - "npm"
+    
+    commit-message:
+      prefix: "chore(deps):"
+      prefix-development: "chore(deps-dev):"
+      include: "scope"
+    
+    pull-request-branch-name:
+      separator: "/"
+    
+    allow:
+      - dependency-type: "all"
+    
+    # Agrupar actualizaciones menores y patches
+    versioning-strategy: "increase"
+    
+    # Crear PR separados para actualizaciones mayores
+    grouped-updates:
+      - dependency-type: "minor"
+        dependency-group: "minor-updates"
+      
+      - dependency-type: "patch"
+        dependency-group: "patch-updates"
+
+  # =========================================================================
+  # DOCKER - Base Images
+  # =========================================================================
+  - package-ecosystem: "docker"
+    directory: "/Soyla"
+    schedule:
+      interval: "weekly"
+      day: "tuesday"
+      time: "03:00"
+      timezone: "UTC"
+    
+    open-pull-requests-limit: 2
+    assignees:
+      - "vanesa"
+    labels:
+      - "dependencies"
+      - "docker"
+      - "infra"
+    
+    commit-message:
+      prefix: "chore(docker):"
+      include: "scope"
+
+  # =========================================================================
+  # GitHub Actions
+  # =========================================================================
+  - package-ecosystem: "github-actions"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+      day: "wednesday"
+      time: "03:00"
+      timezone: "UTC"
+    
+    open-pull-requests-limit: 2
+    assignees:
+      - "vanesa"
+    labels:
+      - "dependencies"
+      - "ci-cd"
+    
+    commit-message:
+      prefix: "chore(actions):"
+      include: "scope"

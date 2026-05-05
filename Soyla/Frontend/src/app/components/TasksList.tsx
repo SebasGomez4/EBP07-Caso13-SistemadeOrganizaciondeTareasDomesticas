@@ -185,13 +185,15 @@ export function TasksList({ groupId, refreshTrigger }: TasksListProps) {
     try {
       await deleteTask(taskToDelete.id);
       setTasks((prev) => prev.filter((task) => task.id !== taskToDelete.id));
-      setDeleteDialogOpen(false);
       setDeletedTaskName(taskToDelete.name);
       setShowDeleteSuccessMessage(true);
       window.setTimeout(() => setShowDeleteSuccessMessage(false), 4000);
       setTaskToDelete(null);
+    } catch (error) {
+      console.error("Error al eliminar tarea:", error);
     } finally {
       setIsDeleting(false);
+      setDeleteDialogOpen(false);
     }
   };
 

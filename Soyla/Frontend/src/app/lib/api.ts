@@ -32,6 +32,7 @@ export class ApiError extends Error {
 export interface SessionUser {
   fullName: string;
   email: string;
+  token: string;
 }
 
 export interface UserProfile {
@@ -84,17 +85,33 @@ export interface Task {
   createdAt: string;
 }
 
+function getAuthToken(): string | null {
+  const rawSession = localStorage.getItem("currentSession");
+  if (!rawSession) {
+    return null;
+  }
+
+  try {
+    const parsed = JSON.parse(rawSession) as { user?: { token?: string } };
+    return parsed?.user?.token ?? null;
+  } catch {
+    return null;
+  }
+}
+
 async function request<T>(path: string, options: RequestOptions = {}): Promise<T> {
-  const headers =
-    options.body === undefined
-      ? undefined
-      : {
-          "Content-Type": "application/json",
-        };
+  const token = getAuthToken();
+  const defaultHeaders: Record<string, string> = {};
+  if (options.body !== undefined) {
+    defaultHeaders["Content-Type"] = "application/json";
+  }
+  if (token) {
+    defaultHeaders["Authorization"] = `Bearer ${token}`;
+  }
 
   const response = await fetch(`${API_BASE_URL}${path}`, {
     method: options.method || "GET",
-    headers,
+    headers: Object.keys(defaultHeaders).length ? defaultHeaders : undefined,
     body: options.body === undefined ? undefined : JSON.stringify(options.body),
   });
 

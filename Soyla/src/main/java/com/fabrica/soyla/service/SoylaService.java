@@ -22,6 +22,7 @@ import com.fabrica.soyla.repository.GroupMembershipRepository;
 import com.fabrica.soyla.repository.HouseholdGroupRepository;
 import com.fabrica.soyla.repository.HouseholdTaskRepository;
 import com.fabrica.soyla.repository.InviteLinkRepository;
+import com.fabrica.soyla.config.JwtService;
 import com.fabrica.soyla.web.ApiException;
 import com.fabrica.soyla.web.ApiModels.AssignTaskRequest;
 import com.fabrica.soyla.web.ApiModels.AuthRequest;
@@ -53,6 +54,7 @@ public class SoylaService {
     private final InviteLinkRepository inviteRepository;
     private final HouseholdTaskRepository taskRepository;
     private final PasswordEncoder passwordEncoder;
+    private final JwtService jwtService;
 
     public SoylaService(
         AppUserRepository userRepository,
@@ -60,7 +62,8 @@ public class SoylaService {
         GroupMembershipRepository membershipRepository,
         InviteLinkRepository inviteRepository,
         HouseholdTaskRepository taskRepository,
-        PasswordEncoder passwordEncoder
+        PasswordEncoder passwordEncoder,
+        JwtService jwtService
     ) {
         this.userRepository = userRepository;
         this.groupRepository = groupRepository;
@@ -68,6 +71,7 @@ public class SoylaService {
         this.inviteRepository = inviteRepository;
         this.taskRepository = taskRepository;
         this.passwordEncoder = passwordEncoder;
+        this.jwtService = jwtService;
     }
 
     public AuthResponse register(RegisterRequest request) {
@@ -82,7 +86,7 @@ public class SoylaService {
         user.setPasswordHash(passwordEncoder.encode(request.password()));
         userRepository.save(user);
 
-        return new AuthResponse(user.getFullName(), user.getEmail());
+        return toAuthResponse(user);
     }
 
     @Transactional(readOnly = true)
@@ -95,7 +99,7 @@ public class SoylaService {
             throw new ApiException(HttpStatus.UNAUTHORIZED, "Credenciales incorrectas.");
         }
 
-        return new AuthResponse(user.getFullName(), user.getEmail());
+        return toAuthResponse(user);
     }
 
     @Transactional(readOnly = true)
@@ -370,7 +374,7 @@ public class SoylaService {
     }
 
     private AuthResponse toAuthResponse(AppUser user) {
-        return new AuthResponse(user.getFullName(), user.getEmail());
+        return new AuthResponse(user.getFullName(), user.getEmail(), jwtService.generateToken(user.getEmail()));
     }
 
     private UserProfileResponse toUserProfile(AppUser user) {

@@ -1,49 +1,57 @@
 import { createBrowserRouter } from "react-router";
-import { Register } from "./pages/Register";
-import { Login } from "./pages/Login";
-import { Home } from "./pages/Home";
-import { CreateGroup } from "./pages/CreateGroup";
-import { GroupCreated } from "./pages/GroupCreated";
-import { GroupView } from "./pages/GroupView";
-import { Profile } from "./pages/Profile";
-import { EditProfile } from "./pages/EditProfile";
-import { InviteAccess } from "./pages/InviteAccess";
+import { RootLayout } from "./RootLayout";
+import {
+  LoginPage,
+  RegisterPage,
+  HomePage,
+  CreateGroupPage,
+  GroupCreatedPage,
+  GroupViewPage,
+  ProfilePage,
+  EditProfilePage,
+  InviteAccessPage,
+} from "./ProtectedPages";
 
 export const router = createBrowserRouter([
   {
-    path: "/",
-    Component: Login,
-  },
-  {
-    path: "/register",
-    Component: Register,
-  },
-  {
-    path: "/home",
-    Component: Home,
-  },
-  {
-    path: "/crear-grupo",
-    Component: CreateGroup,
-  },
-  {
-    path: "/grupo-creado",
-    Component: GroupCreated,
-  },
-  {
-    path: "/grupo/:groupId",
-    Component: GroupView,
-  },
-  {
-    path: "/perfil",
-    Component: Profile,
-  },
-  {
-    path: "/editar-perfil",
-    Component: EditProfile,
-  },
-  {
-    path: "/unirse/:inviteCode",
-    Component: InviteAccess,
+    Component: RootLayout,
+    children: [
+      {
+        path: "/",
+        Component: LoginPage,
+      },
+      {
+        path: "/register",
+        Component: RegisterPage,
+      },
+      {
+        path: "/home",
+        Component: HomePage,
+      },
+      {
+        path: "/crear-grupo",
+        Component: CreateGroupPage,
+      },
+      {
+        path: "/grupo-creado",
+        Component: GroupCreatedPage,
+      },
+      {
+        path: "/grupo/:groupId",
+        Component: GroupViewPage,
+      },
+      {
+        path: "/perfil",
+        Component: ProfilePage,
+      },
+      {
+        path: "/editar-perfil",
+        Component: EditProfilePage,
+      },
+      {
+        path: "/unirse/:inviteCode",
+        Component: InviteAccessPage,
+      },
+    ],
   },
 ]);

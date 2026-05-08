@@ -25,7 +25,7 @@ public final class ApiModels {
     ) {
     }
 
-    public record AuthResponse(String fullName, String email) {
+    public record AuthResponse(String fullName, String email, String token) {
     }
 
     public record UserProfileResponse(UUID id, String fullName, String email, String phone, Instant createdAt) {

@@ -1,0 +1,20 @@
+import { ProtectedRoute } from "./ProtectedRoute";
+import { Login } from "./pages/Login";
+import { Register } from "./pages/Register";
+import { Home } from "./pages/Home";
+import { CreateGroup } from "./pages/CreateGroup";
+import { GroupCreated } from "./pages/GroupCreated";
+import { GroupView } from "./pages/GroupView";
+import { Profile } from "./pages/Profile";
+import { EditProfile } from "./pages/EditProfile";
+import { InviteAccess } from "./pages/InviteAccess";
+
+export const LoginPage = () => <ProtectedRoute publicOnly><Login /></ProtectedRoute>;
+export const RegisterPage = () => <ProtectedRoute publicOnly><Register /></ProtectedRoute>;
+export const HomePage = () => <ProtectedRoute><Home /></ProtectedRoute>;
+export const CreateGroupPage = () => <ProtectedRoute><CreateGroup /></ProtectedRoute>;
+export const GroupCreatedPage = () => <ProtectedRoute><GroupCreated /></ProtectedRoute>;
+export const GroupViewPage = () => <ProtectedRoute><GroupView /></ProtectedRoute>;
+export const ProfilePage = () => <ProtectedRoute><Profile /></ProtectedRoute>;
+export const EditProfilePage = () => <ProtectedRoute><EditProfile /></ProtectedRoute>;
+export const InviteAccessPage = () => <ProtectedRoute><InviteAccess /></ProtectedRoute>;

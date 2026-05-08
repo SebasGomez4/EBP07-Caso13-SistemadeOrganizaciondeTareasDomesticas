@@ -53,7 +53,7 @@ Configura el proyecto apuntando a `Soyla/Frontend` y usa:
 
 - Build command: `npm run build`
 - Output directory: `dist`
-- Variable: `VITE_API_URL=https://TU-BACKEND.onrender.com/api`
+- Variable: `VITE_API_URL=https://soyla-api.onrender.com/api`
 
 El archivo `vercel.json` ya agrega el rewrite para que las rutas del SPA funcionen.
 Configura `VITE_API_URL` en `Production` y `Preview` dentro de Vercel para que ambos entornos usen el backend correcto.

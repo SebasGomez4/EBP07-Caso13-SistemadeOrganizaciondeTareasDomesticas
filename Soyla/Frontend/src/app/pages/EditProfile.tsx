@@ -7,6 +7,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "../co
 import { Alert, AlertDescription } from "../components/ui/alert";
 import { LogOut, Home, ArrowLeft, CheckCircle2, AlertCircle, Loader2 } from "lucide-react";
 import { AppLogo } from "../components/AppLogo";
+import { SecurityIndicator } from "../components/SecurityIndicator";
 
 const SESSION_TIMEOUT = 300000;
 
@@ -373,6 +374,9 @@ export function EditProfile() {
           <p className="text-xs text-gray-400 text-center mt-5">
             Solo se permite modificar el correo electrónico y el número de teléfono.
           </p>
+
+          {/* Información de protección de datos */}
+          <SecurityIndicator variant="detailed" className="mt-6" />
         </div>
       </div>
     </div>

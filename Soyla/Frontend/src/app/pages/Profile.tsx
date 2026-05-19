@@ -5,6 +5,7 @@ import { Card, CardContent } from "../components/ui/card";
 import { Avatar, AvatarFallback } from "../components/ui/avatar";
 import { LogOut, Home, ShieldAlert, User, Pencil, Phone, Mail } from "lucide-react";
 import { AppLogo } from "../components/AppLogo";
+import { SecurityIndicator } from "../components/SecurityIndicator";
 
 const SESSION_TIMEOUT = 300000;
 
@@ -126,8 +127,11 @@ export function Profile() {
                   <ShieldAlert className="h-8 w-8 text-red-400" />
                 </div>
                 <div className="space-y-2">
-                  <h2 className="text-xl text-red-600">No autorizado</h2>
-                  <p className="text-gray-600 text-sm">No tienes permiso para acceder a este perfil.</p>
+                  <h2 className="text-xl text-red-600">Acceso no autorizado</h2>
+                  <p className="text-gray-600 text-sm">No fue posible completar la operación solicitada.</p>
+                  <p className="text-gray-500 text-xs mt-2 px-4 leading-relaxed">
+                    Por seguridad, solo puedes acceder a tu propia información personal.
+                  </p>
                   <p className="text-gray-400 text-xs mt-1">Serás redirigido a tu perfil en unos segundos...</p>
                 </div>
                 <Button onClick={() => navigate("/perfil")} className="bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-700 hover:to-blue-700 mx-auto">
@@ -249,6 +253,9 @@ export function Profile() {
           <p className="text-xs text-gray-400 text-center mt-5">
             Solo se permite editar el correo electrónico y el número de teléfono.
           </p>
+
+          {/* Información de protección de datos */}
+          <SecurityIndicator variant="detailed" className="mt-6" />
         </div>
       </div>
     </div>

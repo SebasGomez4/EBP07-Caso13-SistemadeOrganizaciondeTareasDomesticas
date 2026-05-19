@@ -8,6 +8,7 @@ import { GroupView } from "./pages/GroupView";
 import { Profile } from "./pages/Profile";
 import { EditProfile } from "./pages/EditProfile";
 import { InviteAccess } from "./pages/InviteAccess";
+import { ConfirmEmail } from "./pages/ConfirmEmail";
 
 export const router = createBrowserRouter([
   {
@@ -45,5 +46,9 @@ export const router = createBrowserRouter([
   {
     path: "/unirse/:inviteCode",
     Component: InviteAccess,
+  },
+  {
+    path: "/confirm-email/:token",
+    Component: ConfirmEmail,
   },
 ]);

@@ -5,13 +5,16 @@ import { Input } from "../components/ui/input";
 import { Label } from "../components/ui/label";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "../components/ui/card";
 import { Alert, AlertDescription } from "../components/ui/alert";
-import { AlertCircle, CheckCircle2 } from "lucide-react";
+import { AlertCircle, CheckCircle2, X } from "lucide-react";
 import { AppLogo } from "../components/AppLogo";
+import { SecurityIndicator } from "../components/SecurityIndicator";
 
 interface User {
   fullName: string;
   email: string;
   password: string;
+  status: "pending" | "active"; // HU 1.1.2
+  createdAt: number;
 }
 
 const MAX_ATTEMPTS = 3;
@@ -114,6 +117,13 @@ export function Login() {
         return;
       }
 
+      // ── HU 1.1.2: Verificar si la cuenta está activada ──
+      if (user.status === "pending") {
+        setError("Tu cuenta aún no ha sido activada. Por favor, revisa tu correo electrónico y confirma tu registro.");
+        setLoading(false);
+        return;
+      }
+
       // Login exitoso
       const sessionData = {
         user: {
@@ -149,13 +159,20 @@ export function Login() {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-purple-50 via-blue-50 to-indigo-50 p-4">
+    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-purple-50 via-blue-50 to-indigo-50 p-4 sm:p-6">
 
       {/* Toast de cierre de sesión exitoso */}
       {showLogoutToast && (
-        <div className="fixed top-4 right-4 z-50 flex items-center gap-2 bg-white border border-green-200 shadow-md rounded-full px-4 py-2 transition-all">
-          <CheckCircle2 className="h-4 w-4 text-green-500 shrink-0" />
-          <span className="text-sm text-gray-700">Sesión cerrada exitosamente</span>
+        <div className="fixed top-4 right-4 z-50 flex items-center gap-2 bg-white border-2 border-green-200 shadow-md rounded-full px-4 py-3 transition-all max-w-[calc(100vw-2rem)]">
+          <CheckCircle2 className="h-5 w-5 text-green-500 shrink-0" />
+          <span className="flex-1 text-sm text-gray-700">Sesión cerrada exitosamente</span>
+          <button
+            onClick={() => setShowLogoutToast(false)}
+            className="shrink-0 p-1 rounded-md hover:bg-gray-100 transition-colors"
+            aria-label="Cerrar notificación"
+          >
+            <X className="h-4 w-4 text-gray-400 hover:text-gray-600" />
+          </button>
         </div>
       )}
 
@@ -166,14 +183,14 @@ export function Login() {
         </div>
 
       <Card className="w-full shadow-lg border-purple-100">
-        <CardHeader className="space-y-3 pb-6">
+        <CardHeader className="space-y-4 pb-6">
           <CardTitle className="text-2xl text-center">Iniciar sesión</CardTitle>
-          <CardDescription className="text-center">
+          <CardDescription className="text-center text-base">
             Ingresa tus credenciales para continuar
           </CardDescription>
         </CardHeader>
         <form onSubmit={handleSubmit}>
-          <CardContent className="space-y-5 px-6">
+          <CardContent className="space-y-6 px-6">
             {error && (
               <Alert variant="destructive" className="mb-2">
                 <AlertCircle className="h-4 w-4" />
@@ -191,7 +208,7 @@ export function Login() {
               </Alert>
             )}
 
-            <div className="space-y-2.5">
+            <div className="space-y-3">
               <Label htmlFor="email">Correo electrónico</Label>
               <Input
                 id="email"
@@ -200,12 +217,15 @@ export function Login() {
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 disabled={loading || isLocked}
-                className="h-11"
+                aria-label="Correo electrónico"
               />
             </div>
 
-            <div className="space-y-2.5">
-              <Label htmlFor="password">Contraseña</Label>
+            <div className="space-y-3">
+              <div className="flex items-center justify-between">
+                <Label htmlFor="password">Contraseña</Label>
+
+              </div>
               <Input
                 id="password"
                 type="password"
@@ -213,16 +233,17 @@ export function Login() {
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 disabled={loading || isLocked}
-                className="h-11"
+                aria-label="Contraseña"
               />
             </div>
           </CardContent>
 
-          <CardFooter className="flex flex-col space-y-5 px-6 pt-8 pb-6">
+          <CardFooter className="flex flex-col space-y-6 px-6 pt-8 pb-6">
             <Button
               type="submit"
-              className="w-full h-11 bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-700 hover:to-blue-700"
+              className="w-full bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-700 hover:to-blue-700"
               disabled={loading || isLocked}
+              size="lg"
             >
               {loading ? "Ingresando..." : "Ingresar"}
             </Button>
@@ -236,6 +257,9 @@ export function Login() {
           </CardFooter>
         </form>
       </Card>
+
+      {/* Indicador de seguridad */}
+      <SecurityIndicator variant="minimal" className="mt-4" />
       </div>
     </div>
   );

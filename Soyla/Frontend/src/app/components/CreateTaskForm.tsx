@@ -18,7 +18,7 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "./ui/dialog";
-import { ClipboardList, CheckCircle2, Loader2 } from "lucide-react";
+import { ClipboardList, CheckCircle2, Loader2, X } from "lucide-react";
 
 interface CreateTaskFormProps {
   groupId: string;
@@ -82,7 +82,11 @@ export function CreateTaskForm({ groupId, onTaskCreated }: CreateTaskFormProps) 
       return "La fecha límite es obligatoria";
     }
 
-    const selectedDate = new Date(deadline);
+    // Parsear manualmente para evitar problemas de UTC
+    const [year, month, day] = deadline.split('-').map(Number);
+    const selectedDate = new Date(year, month - 1, day);
+    selectedDate.setHours(0, 0, 0, 0);
+
     const today = new Date();
     today.setHours(0, 0, 0, 0);
 
@@ -148,6 +152,9 @@ export function CreateTaskForm({ groupId, onTaskCreated }: CreateTaskFormProps) 
         frequency: "ninguna",
       });
 
+      // Despachar evento para sincronización
+      window.dispatchEvent(new CustomEvent("taskCreated", { detail: { groupId } }));
+
       // Ocultar mensaje de éxito después de 4 segundos
       setTimeout(() => {
         setShowSuccess(false);
@@ -173,12 +180,19 @@ export function CreateTaskForm({ groupId, onTaskCreated }: CreateTaskFormProps) 
       {showSuccess && (
         <div className="fixed top-4 right-4 z-50 flex items-center gap-3 bg-white border border-green-200 shadow-lg rounded-lg px-5 py-3 transition-all max-w-md">
           <CheckCircle2 className="h-5 w-5 text-green-500 shrink-0" />
-          <div>
+          <div className="flex-1">
             <p className="text-sm font-medium text-gray-900">Tarea creada exitosamente</p>
             <p className="text-xs text-gray-600 mt-0.5">
               Se ha notificado a todos los miembros del grupo familiar
             </p>
           </div>
+          <button
+            onClick={() => setShowSuccess(false)}
+            className="shrink-0 p-1 rounded-md hover:bg-gray-100 transition-colors"
+            aria-label="Cerrar notificación"
+          >
+            <X className="h-4 w-4 text-gray-400 hover:text-gray-600" />
+          </button>
         </div>
       )}
 

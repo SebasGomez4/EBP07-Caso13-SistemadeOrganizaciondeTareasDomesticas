@@ -3,6 +3,7 @@ import { useNavigate, useParams } from "react-router";
 import { Button } from "../components/ui/button";
 import { Card, CardContent } from "../components/ui/card";
 import { AppLogo } from "../components/AppLogo";
+import { SecurityIndicator } from "../components/SecurityIndicator";
 import {
   CheckCircle2,
   XCircle,
@@ -381,6 +382,9 @@ export function InviteAccess() {
               </CardContent>
             </Card>
           )}
+
+          {/* Indicador de seguridad */}
+          {state !== "loading" && <SecurityIndicator variant="minimal" className="mt-6" />}
 
         </div>
       </div>

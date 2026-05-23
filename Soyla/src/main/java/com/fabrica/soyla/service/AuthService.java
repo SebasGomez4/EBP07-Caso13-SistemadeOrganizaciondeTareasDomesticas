@@ -6,6 +6,7 @@ import com.fabrica.soyla.model.LoginResponseDTO;
 import com.fabrica.soyla.model.Usuario;
 import com.fabrica.soyla.repository.UsuarioRepository;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 
 @Service
@@ -23,11 +24,14 @@ public class AuthService {
     @Autowired
     private TokenBlacklistService tokenBlacklistService;
 
+    @Autowired
+    private PasswordEncoder passwordEncoder;
+
     public LoginResponseDTO login(LoginDTO dto) {
         Usuario usuario = usuarioRepository.findByCorreo(dto.getCorreo())
                 .orElseThrow(() -> new IllegalArgumentException("Correo o contraseña incorrectos"));
 
-        if (!usuario.getContrasena().equals(dto.getContrasena())) {
+        if (!passwordEncoder.matches(dto.getContrasena(), usuario.getContrasena())) {
             throw new IllegalArgumentException("Correo o contraseña incorrectos");
         }
 
@@ -38,10 +42,8 @@ public class AuthService {
     }
 
     public void logout(String correo, String token) {
-        // Eliminar token de la lista de activos
         inactivityTrackingService.cerrarSesion(correo);
         
-        // Agregar token a la blacklist
         if (token != null && !token.isEmpty()) {
             tokenBlacklistService.agregarTokenALista(token);
         }

@@ -1,7 +1,6 @@
 package com.fabrica.soyla.service;
 
 import com.fabrica.soyla.model.Notificacion;
-import com.fabrica.soyla.model.TareaDomestica;
 import com.fabrica.soyla.model.Usuario;
 import com.fabrica.soyla.repository.NotificacionRepository;
 import org.springframework.stereotype.Service;

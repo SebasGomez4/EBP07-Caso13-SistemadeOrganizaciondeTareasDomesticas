@@ -30,8 +30,6 @@ public class InvitacionService {
     @Autowired
     private UsuarioRepository usuarioRepository;
 
-    @Autowired
-    private GrupoFamiliarService grupoFamiliarService;
 
     public InvitacionGrupo generarInvitacion(Long grupoId) {
         long startTime = System.currentTimeMillis();

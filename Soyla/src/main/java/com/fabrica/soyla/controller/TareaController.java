@@ -4,7 +4,6 @@ import com.fabrica.soyla.model.AsignarTareaDTO;
 import com.fabrica.soyla.model.CambiarEstadoTareaDTO;
 import com.fabrica.soyla.model.MiembroDTO;
 import com.fabrica.soyla.model.TareaDomestica;
-import com.fabrica.soyla.repository.UsuarioRepository;
 import com.fabrica.soyla.service.TareaService;
 import jakarta.validation.Valid;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -23,9 +22,6 @@ public class TareaController {
 
     @Autowired
     private TareaService tareaService;
-
-    @Autowired
-    private UsuarioRepository usuarioRepository;
 
     @PostMapping
     public ResponseEntity<?> crearTarea(@Valid @RequestBody TareaDomestica tarea) {

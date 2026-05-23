@@ -1,6 +1,7 @@
 package com.fabrica.soyla.controller;
 
 import com.fabrica.soyla.model.AsignarTareaDTO;
+import com.fabrica.soyla.model.CambiarEstadoTareaDTO;
 import com.fabrica.soyla.model.MiembroDTO;
 import com.fabrica.soyla.model.TareaDomestica;
 import com.fabrica.soyla.repository.UsuarioRepository;
@@ -115,5 +116,33 @@ public class TareaController {
         String correo = (String) auth.getPrincipal();
         List<MiembroDTO> miembros = tareaService.obtenerMiembrosDisponibles(grupoId, correo);
         return ResponseEntity.ok(miembros);
+    }
+
+    @PostMapping("/{id}/cambiar-estado")
+    public ResponseEntity<Map<String, Object>> cambiarEstado(
+            @PathVariable Long id,
+            @Valid @RequestBody CambiarEstadoTareaDTO dto) {
+        Authentication auth = SecurityContextHolder.getContext().getAuthentication();
+        String correo = (String) auth.getPrincipal();
+        Map<String, Object> response = new HashMap<>();
+        try {
+            TareaDomestica tarea = tareaService.cambiarEstado(id, dto.getNuevoEstado(), correo);
+            response.put("mensaje", "Estado de la tarea actualizado exitosamente");
+            response.put("estado", "exito");
+            response.put("tarea", tarea);
+            return ResponseEntity.ok(response);
+        } catch (IllegalArgumentException e) {
+            response.put("mensaje", e.getMessage());
+            response.put("estado", "error");
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(response);
+        } catch (SecurityException e) {
+            response.put("mensaje", e.getMessage());
+            response.put("estado", "error");
+            return ResponseEntity.status(HttpStatus.FORBIDDEN).body(response);
+        } catch (IllegalStateException e) {
+            response.put("mensaje", e.getMessage());
+            response.put("estado", "error");
+            return ResponseEntity.status(HttpStatus.FORBIDDEN).body(response);
+        }
     }
 }

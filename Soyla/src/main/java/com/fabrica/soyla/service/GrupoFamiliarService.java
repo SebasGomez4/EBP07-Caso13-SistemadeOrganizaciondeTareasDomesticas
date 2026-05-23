@@ -5,6 +5,7 @@ import com.fabrica.soyla.model.CrearGrupoDTO;
 import com.fabrica.soyla.model.GrupoFamiliar;
 import com.fabrica.soyla.model.GrupoMiembro;
 import com.fabrica.soyla.model.MiembroDTO;
+import com.fabrica.soyla.model.MisGruposDTO;
 import com.fabrica.soyla.model.Usuario;
 import com.fabrica.soyla.repository.GrupoFamiliarRepository;
 import com.fabrica.soyla.repository.UsuarioRepository;
@@ -71,8 +72,21 @@ public class GrupoFamiliarService {
         return dto;
     }).toList();
 }
-    public List<GrupoFamiliar> obtenerMisGrupos(String correo) {
-    List<GrupoFamiliar> grupos = grupoFamiliarRepository.findGruposByUsuarioCorreo(correo);
-    return grupos;
-}
+    public List<MisGruposDTO> obtenerMisGrupos(String correo) {
+        Usuario usuario = usuarioRepository.findByCorreo(correo)
+                .orElseThrow(() -> new IllegalArgumentException("Usuario no encontrado"));
+        
+        List<GrupoFamiliar> grupos = grupoFamiliarRepository.findGruposByUsuarioCorreo(correo);
+        
+        return grupos.stream().map(grupo -> {
+            // Buscar el miembro para obtener el rol
+            GrupoMiembro miembro = grupo.getMiembros().stream()
+                    .filter(m -> m.getUsuario().getCorreo().equals(correo))
+                    .findFirst()
+                    .orElse(null);
+            
+            String rol = miembro != null ? miembro.getRol() : "MEMBER";
+            return new MisGruposDTO(grupo.getId(), grupo.getNombre(), rol, usuario.getNombre());
+        }).toList();
+    }
 }

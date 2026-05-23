@@ -7,39 +7,51 @@ import com.fabrica.soyla.model.Usuario;
 import com.fabrica.soyla.repository.UsuarioRepository;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
+import com.fabrica.soyla.config.JwtUtil;
 
 @Service
 public class UsuarioService {
 
     private static final long MAX_RESPONSE_TIME_MS = 3000; // 3 segundos
 
-    @Autowired
-    private UsuarioRepository usuarioRepository;
+@Autowired
+private UsuarioRepository usuarioRepository;
 
-    public Usuario registrarUsuario(RegistroUsuarioDTO dto) {
-        long startTime = System.currentTimeMillis();
+@Autowired
+private EmailService emailService;
 
-        if (usuarioRepository.existsByCorreo(dto.getCorreo())) {
-            throw new IllegalArgumentException("Ya existe un usuario con ese correo");
-        }
+@Autowired
+private JwtUtil jwtUtil;
 
-        Usuario usuario = new Usuario();
-        usuario.setNombre(dto.getNombre());
-        usuario.setCorreo(dto.getCorreo());
-        usuario.setContrasena(dto.getContrasena());
+public Usuario registrarUsuario(RegistroUsuarioDTO dto) {
+    long startTime = System.currentTimeMillis();
 
-        Usuario usuarioGuardado = usuarioRepository.save(usuario);
-
-        long elapsedTime = System.currentTimeMillis() - startTime;
-        if (elapsedTime > MAX_RESPONSE_TIME_MS) {
-            throw new IllegalStateException(
-                    "El tiempo de registro excedió el límite máximo de 3 segundos. " +
-                    "Tiempo utilizado: " + elapsedTime + "ms"
-            );
-        }
-
-        return usuarioGuardado;
+    if (usuarioRepository.existsByCorreo(dto.getCorreo())) {
+        throw new IllegalArgumentException("Ya existe un usuario con ese correo");
     }
+
+    Usuario usuario = new Usuario();
+    usuario.setNombre(dto.getNombre());
+    usuario.setCorreo(dto.getCorreo());
+    usuario.setContrasena(dto.getContrasena());
+
+    Usuario usuarioGuardado = usuarioRepository.save(usuario);
+
+    // Generar token de confirmación con duración de 24 horas
+    long veinticuatroHoras = 1000L * 60 * 60 * 24; // 24h en ms
+    String confirmToken = jwtUtil.generarToken(usuarioGuardado.getCorreo(), veinticuatroHoras);
+    emailService.enviarConfirmacionRegistro(usuarioGuardado.getCorreo(), usuarioGuardado.getNombre(), confirmToken);
+
+    long elapsedTime = System.currentTimeMillis() - startTime;
+    if (elapsedTime > MAX_RESPONSE_TIME_MS) {
+        throw new IllegalStateException(
+                "El tiempo de registro excedió el límite máximo de 3 segundos. " +
+                "Tiempo utilizado: " + elapsedTime + "ms"
+        );
+    }
+
+    return usuarioGuardado;
+}
 
     public PerfilDTO obtenerPerfil(String correo) {
         long startTime = System.currentTimeMillis();

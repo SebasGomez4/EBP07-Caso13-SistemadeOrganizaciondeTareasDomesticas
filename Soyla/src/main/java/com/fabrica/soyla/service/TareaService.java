@@ -30,6 +30,9 @@ public class TareaService {
     @Autowired
     private GrupoFamiliarRepository grupoFamiliarRepository;
 
+    @Autowired
+    private NotificacionService notificacionService;
+
     @Transactional
 public TareaDomestica crearTarea(TareaDomestica tarea, String correoUsuario) {
     if (tarea.getGrupo() == null || tarea.getGrupo().getId() == null) {
@@ -117,7 +120,13 @@ public List<TareaDomestica> listarTareasPorGrupo(Long grupoId, String correoUsua
 
         // Asignar el responsable
         tarea.setResponsable(miembroResponsable.getUsuario());
-        return tareaRepository.saveAndFlush(tarea);
+        TareaDomestica saved = tareaRepository.saveAndFlush(tarea);
+
+        // Crear notificación para el responsable
+        String mensaje = "Te han asignado la tarea: " + (tarea.getTitulo() != null ? tarea.getTitulo() : "(sin título)");
+        notificacionService.crearNotificacion(miembroResponsable.getUsuario(), mensaje, "ASIGNACION");
+
+        return saved;
     }
 
     public List<MiembroDTO> obtenerMiembrosDisponibles(Long grupoId, String correoUsuario) {
@@ -140,5 +149,58 @@ public List<TareaDomestica> listarTareasPorGrupo(Long grupoId, String correoUsua
                 }
                 return dto;
             }).toList();
+}
+
+    @Transactional
+    public TareaDomestica cambiarEstado(Long tareaId, String nuevoEstado, String correoUsuario) {
+        TareaDomestica tarea = tareaRepository.findById(tareaId)
+                .orElseThrow(() -> new IllegalArgumentException("Tarea no encontrada"));
+
+        // Validar que quien intenta cambiar es responsable o admin del grupo
+        Usuario usuario = usuarioRepository.findByCorreo(correoUsuario)
+                .orElseThrow(() -> new IllegalArgumentException("Usuario no encontrado"));
+
+        GrupoMiembro miembroEnGrupo = grupoFamiliarRepository
+                .findMiembroEnGrupo(tarea.getGrupo().getId(), correoUsuario)
+                .orElseThrow(() -> new IllegalStateException("No perteneces a este grupo"));
+
+        boolean esResponsable = tarea.getResponsable() != null && tarea.getResponsable().getId().equals(usuario.getId());
+        boolean esAdmin = miembroEnGrupo.getRol().equals("ADMIN");
+
+        if (!esResponsable && !esAdmin) {
+            throw new SecurityException("Solo el responsable o un admin puede cambiar el estado");
+        }
+
+        // Validar transición de estado
+        String estadoActual = tarea.getEstado();
+        if (!esTransicionValida(estadoActual, nuevoEstado)) {
+            throw new IllegalArgumentException("No se puede cambiar de " + estadoActual + " a " + nuevoEstado);
+        }
+
+        tarea.setEstado(nuevoEstado);
+        TareaDomestica saved = tareaRepository.saveAndFlush(tarea);
+
+        // Notificar a todos los miembros del grupo sobre el cambio
+        String mensaje = "El estado de la tarea '" + tarea.getNombre() + "' cambió a " + nuevoEstado;
+        for (GrupoMiembro miembro : tarea.getGrupo().getMiembros()) {
+            notificacionService.crearNotificacion(miembro.getUsuario(), mensaje, "CAMBIO_ESTADO");
+        }
+
+        return saved;
+    }
+
+    private boolean esTransicionValida(String estadoActual, String nuevoEstado) {
+        if (estadoActual.equals(nuevoEstado)) {
+            return false; // No cambiar al mismo estado
+        }
+        if (estadoActual.equals("VENCIDA")) {
+            return false; // No se puede cambiar desde VENCIDA
+        }
+        if (estadoActual.equals("EN_PROGRESO") && nuevoEstado.equals("SIN_EMPEZAR")) {
+            return false; // No se puede devolver a SIN_EMPEZAR desde EN_PROGRESO
+        }
+        // Permitir: SIN_EMPEZAR -> EN_PROGRESO, SIN_EMPEZAR -> COMPLETADA, EN_PROGRESO -> COMPLETADA, COMPLETADA -> EN_PROGRESO
+        return true;
+    }
 }
 }

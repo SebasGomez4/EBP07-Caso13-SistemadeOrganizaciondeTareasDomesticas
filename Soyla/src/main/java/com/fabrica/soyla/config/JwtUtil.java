@@ -28,6 +28,16 @@ public class JwtUtil {
                 .compact();
     }
 
+    // Genera un token con expiración personalizada (milisegundos desde ahora)
+    public String generarToken(String correo, long expiracionMillis) {
+        return Jwts.builder()
+                .setSubject(correo)
+                .setIssuedAt(new Date())
+                .setExpiration(new Date(System.currentTimeMillis() + expiracionMillis))
+                .signWith(key)
+                .compact();
+    }
+
     public String extraerCorreo(String token) {
         return Jwts.parserBuilder()
                 .setSigningKey(key)

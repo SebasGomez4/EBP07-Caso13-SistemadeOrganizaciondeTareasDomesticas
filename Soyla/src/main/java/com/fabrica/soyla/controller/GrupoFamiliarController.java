@@ -41,20 +41,20 @@ public class GrupoFamiliarController {
     }
     @GetMapping("/mis-grupos")
     public ResponseEntity<?> obtenerMisGrupos() {
-    Authentication auth = SecurityContextHolder.getContext().getAuthentication();
-    String correo = (String) auth.getPrincipal();
-    try {
-        List<GrupoFamiliar> grupos = grupoFamiliarService.obtenerMisGrupos(correo);
-        if (grupos.isEmpty()) {
+        Authentication auth = SecurityContextHolder.getContext().getAuthentication();
+        String correo = (String) auth.getPrincipal();
+        try {
+            List<?> grupos = grupoFamiliarService.obtenerMisGrupos(correo);
+            if (grupos.isEmpty()) {
+                Map<String, String> response = new HashMap<>();
+                response.put("mensaje", "No perteneces a ningún grupo familiar");
+                return ResponseEntity.ok(response);
+            }
+            return ResponseEntity.ok(grupos);
+        } catch (IllegalArgumentException e) {
             Map<String, String> response = new HashMap<>();
-            response.put("mensaje", "No perteneces a ningún grupo familiar");
-            return ResponseEntity.ok(response);
+            response.put("mensaje", e.getMessage());
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(response);
         }
-        return ResponseEntity.ok(grupos);
-    } catch (IllegalArgumentException e) {
-        Map<String, String> response = new HashMap<>();
-        response.put("mensaje", e.getMessage());
-        return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(response);
     }
-}
 }

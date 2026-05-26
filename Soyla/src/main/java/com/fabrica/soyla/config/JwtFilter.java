@@ -36,6 +36,11 @@ public class JwtFilter extends OncePerRequestFilter {
     protected void doFilterInternal(HttpServletRequest request,
                                     HttpServletResponse response,
                                     FilterChain filterChain) throws ServletException, IOException {
+        
+        System.out.println("=== JWT FILTER ===");
+        System.out.println("METHOD: " + request.getMethod());
+        System.out.println("URI: " + request.getRequestURI());
+        System.out.println("AUTH HEADER: " + request.getHeader("Authorization"));
 
         // Agregar headers anti-caché
         response.setHeader("Cache-Control", "no-cache, no-store, must-revalidate, max-age=0");

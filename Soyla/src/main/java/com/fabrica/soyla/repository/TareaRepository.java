@@ -2,6 +2,7 @@ package com.fabrica.soyla.repository;
 
 import com.fabrica.soyla.model.TareaDomestica;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
@@ -16,4 +17,8 @@ public interface TareaRepository extends JpaRepository<TareaDomestica, Long> {
 
     @Query("select t from TareaDomestica t where t.estado not in :estados and t.fechaVencimiento < :fecha")
     List<TareaDomestica> findTareasVencidasPorEstadoYFecha(@Param("estados") List<String> estados, @Param("fecha") LocalDate fecha);
+    
+    @Modifying
+    @Query("DELETE FROM TareaDomestica t WHERE t.grupo.id = :grupoId")
+    void deleteByGrupoId(@Param("grupoId") Long grupoId);
 }

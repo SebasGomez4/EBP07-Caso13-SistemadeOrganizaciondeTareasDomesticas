@@ -8,14 +8,27 @@ import com.fabrica.soyla.model.MiembroDTO;
 import com.fabrica.soyla.model.MisGruposDTO;
 import com.fabrica.soyla.model.Usuario;
 import com.fabrica.soyla.repository.GrupoFamiliarRepository;
+import com.fabrica.soyla.repository.InvitacionGrupoRepository;
 import com.fabrica.soyla.repository.UsuarioRepository;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import java.util.List;
+import com.fabrica.soyla.repository.TareaRepository;
+
+
 
 @Service
 public class GrupoFamiliarService {
+
+    @Autowired
+    private InvitacionGrupoRepository invitacionGrupoRepository;
+
+    @Autowired
+    private TareaRepository tareaRepository;
+
+    @Autowired
+    private GrupoAuthorizationService grupoAuthorizationService;
 
     @Autowired
     private GrupoFamiliarRepository grupoFamiliarRepository;
@@ -89,4 +102,40 @@ public class GrupoFamiliarService {
             return new MisGruposDTO(grupo.getId(), grupo.getNombre(), rol, usuario.getNombre());
         }).toList();
     }
+
+    @Transactional
+    public void eliminarGrupo(Long grupoId, String correoUsuario) {
+    long startTime = System.currentTimeMillis();
+
+    // Escenario 3: Validar que el usuario es ADMIN
+    if (!grupoAuthorizationService.esAdminDelGrupo(grupoId, correoUsuario)) {
+        throw new IllegalStateException(
+            "Solo el administrador tiene permiso para eliminar el grupo");
+    }
+
+    // Verificar que el grupo existe
+    GrupoFamiliar grupo = grupoFamiliarRepository.findById(grupoId)
+            .orElseThrow(() -> new IllegalArgumentException("Grupo no encontrado"));
+
+    
+    // Eliminar invitaciones asociadas al grupo
+    invitacionGrupoRepository.deleteByGrupoId(grupoId);
+
+    // Escenario 1: Eliminar el grupo
+    grupoFamiliarRepository.delete(grupo);
+
+    // Escenario 4: Eliminar tareas pendientes asociadas al grupo
+    tareaRepository.deleteByGrupoId(grupoId);
+
+    // Escenario 1: Eliminar el grupo (miembros se eliminan por CascadeType.ALL)
+    grupoFamiliarRepository.delete(grupo);
+
+    // Escenario 5: Verificar tiempo de respuesta
+    long elapsedTime = System.currentTimeMillis() - startTime;
+    if (elapsedTime > 3000) {
+        throw new IllegalStateException(
+            "El tiempo de respuesta excedió el límite máximo de 3 segundos. " +
+            "Tiempo utilizado: " + elapsedTime + "ms");
+    }
+}
 }

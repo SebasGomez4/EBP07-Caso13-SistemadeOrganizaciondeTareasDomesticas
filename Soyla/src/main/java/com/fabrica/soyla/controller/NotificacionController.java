@@ -3,6 +3,7 @@ package com.fabrica.soyla.controller;
 import com.fabrica.soyla.model.Notificacion;
 import com.fabrica.soyla.model.Usuario;
 import com.fabrica.soyla.repository.UsuarioRepository;
+import com.fabrica.soyla.service.AlertaTareaService;
 import com.fabrica.soyla.service.NotificacionService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
@@ -10,13 +11,16 @@ import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
-
+import com.fabrica.soyla.service.AlertaTareaService;
 import java.util.List;
 import java.util.Map;
 
 @RestController
 @RequestMapping("/api/notificaciones")
 public class NotificacionController {
+
+    @Autowired
+private AlertaTareaService alertaTareaService;
 
     @Autowired
     private NotificacionService notificacionService;
@@ -40,7 +44,15 @@ public class NotificacionController {
         Usuario usuario = usuarioRepository.findByCorreo(correo)
                 .orElseThrow(() -> new IllegalArgumentException("Usuario no encontrado"));
         return ResponseEntity.ok(notificacionService.listarNotificaciones(usuario.getId()));
-    }
+    }   
+    @PostMapping("/verificar-tareas")
+    public ResponseEntity<Map<String, String>> verificarTareas() {
+        alertaTareaService.verificarManualmente();
+        return ResponseEntity.ok(Map.of(
+            "estado", "exito",
+            "mensaje", "Verificación de tareas ejecutada correctamente"
+        ));
+}
 
     @PostMapping("/{id}/leer")
     public ResponseEntity<Map<String, String>> marcarComoLeida(@PathVariable Long id) {

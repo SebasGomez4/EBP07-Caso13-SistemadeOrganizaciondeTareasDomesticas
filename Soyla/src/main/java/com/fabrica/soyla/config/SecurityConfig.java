@@ -38,6 +38,7 @@ public class SecurityConfig {
             .requestMatchers("/api/tareas/**").authenticated()
             .requestMatchers("/api/invitaciones/**").authenticated()
             .requestMatchers("/api/usuarios/perfil/**").authenticated()
+            .requestMatchers("/api/notificaciones/**").authenticated()
             .anyRequest().authenticated()
         )
             .addFilterBefore(jwtFilter, UsernamePasswordAuthenticationFilter.class);

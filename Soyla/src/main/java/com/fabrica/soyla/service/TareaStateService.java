@@ -1,9 +1,11 @@
 package com.fabrica.soyla.service;
 
 import com.fabrica.soyla.model.GrupoMiembro;
+import com.fabrica.soyla.model.HistorialPuntos;
 import com.fabrica.soyla.model.TareaDomestica;
 import com.fabrica.soyla.model.Usuario;
 import com.fabrica.soyla.repository.ClasificacionRepository;
+import com.fabrica.soyla.repository.HistorialPuntosRepository;
 import com.fabrica.soyla.repository.PuntajeMiembroRepository;
 import com.fabrica.soyla.repository.TareaRepository;
 import com.fabrica.soyla.repository.UsuarioRepository;
@@ -33,6 +35,9 @@ public class TareaStateService {
 
     @Autowired
     private PuntajeMiembroRepository puntajeMiembroRepository;
+
+    @Autowired
+    private HistorialPuntosRepository historialPuntosRepository;
 
     @Transactional
     public TareaDomestica cambiarEstado(Long tareaId, String nuevoEstado, String correoUsuario) {
@@ -80,22 +85,27 @@ public class TareaStateService {
             tarea.getGrupo().getMiembros().forEach(gm ->
                 notificacionService.crearNotificacion(gm.getUsuario(), mensaje, tipo)
             );
-
-            // Sumar puntos al responsable si hay clasificación activa
         if ("COMPLETADA".equals(nuevoEstado) && tarea.getResponsable() != null) {
-        clasificacionRepository.findByGrupoIdAndActivaTrue(tarea.getGrupo().getId())
-                .ifPresent(clasificacion -> {
-                    puntajeMiembroRepository
-                            .findByClasificacionIdAndUsuarioId(
-                                    clasificacion.getId(),
-                                    tarea.getResponsable().getId())
-                            .ifPresent(puntaje -> {
-                                puntaje.setPuntos(puntaje.getPuntos() + clasificacion.getPuntosPorTarea());
-                                puntajeMiembroRepository.save(puntaje);
-                            });
-                });
-    }
+    clasificacionRepository.findByGrupoIdAndActivaTrue(tarea.getGrupo().getId())
+            .ifPresent(clasificacion -> {
+                puntajeMiembroRepository
+                        .findByClasificacionIdAndUsuarioId(
+                                clasificacion.getId(),
+                                tarea.getResponsable().getId())
+                        .ifPresent(puntaje -> {
+                            puntaje.setPuntos(puntaje.getPuntos() + clasificacion.getPuntosPorTarea());
+                            puntajeMiembroRepository.save(puntaje);
 
+                            // Guardar en historial
+                            HistorialPuntos historial = new HistorialPuntos();
+                            historial.setUsuario(tarea.getResponsable());
+                            historial.setClasificacion(clasificacion);
+                            historial.setTarea(tarea);
+                            historial.setPuntosObtenidos(clasificacion.getPuntosPorTarea());
+                            historialPuntosRepository.save(historial);
+                        });
+            });
+}
         return saved;
     }
 

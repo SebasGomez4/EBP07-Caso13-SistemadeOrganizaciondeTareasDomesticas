@@ -4,14 +4,20 @@ import com.fabrica.soyla.model.ClasificacionSemanal;
 import com.fabrica.soyla.model.CrearClasificacionDTO;
 import com.fabrica.soyla.model.GrupoFamiliar;
 import com.fabrica.soyla.model.GrupoMiembro;
+import com.fabrica.soyla.model.HistorialPuntosDTO;
 import com.fabrica.soyla.model.PuntajeMiembro;
+import com.fabrica.soyla.model.RankingDTO;
+import com.fabrica.soyla.model.Usuario;
 import com.fabrica.soyla.repository.ClasificacionRepository;
 import com.fabrica.soyla.repository.GrupoFamiliarRepository;
+import com.fabrica.soyla.repository.HistorialPuntosRepository;
 import com.fabrica.soyla.repository.PuntajeMiembroRepository;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import java.time.LocalDate;
+import java.util.ArrayList;
 import java.util.List;
 
 @Service
@@ -28,6 +34,12 @@ public class ClasificacionService {
 
     @Autowired
     private PuntajeMiembroRepository puntajeMiembroRepository;
+        @Autowired
+    private HistorialPuntosRepository historialPuntosRepository;
+
+    @Autowired
+    private NotificacionService notificacionService;
+
 
     @Transactional
     public ClasificacionSemanal crearClasificacion(CrearClasificacionDTO dto, String correo) {
@@ -85,4 +97,91 @@ public class ClasificacionService {
 
         return puntajeMiembroRepository.findByClasificacionIdOrderByPuntosDesc(clasificacion.getId());
     }
+    
+
+    public List<RankingDTO> obtenerRanking(Long grupoId, String correo) {
+        long startTime = System.currentTimeMillis();
+
+        grupoAuthorizationService.validarPertenenciaAlGrupo(grupoId, correo);
+
+        ClasificacionSemanal clasificacion = clasificacionRepository
+                .findByGrupoIdAndActivaTrue(grupoId)
+                .orElseThrow(() -> new IllegalArgumentException("No hay clasificación activa en este grupo"));
+
+        List<PuntajeMiembro> puntajes = puntajeMiembroRepository
+                .findByClasificacionIdOrderByPuntosDesc(clasificacion.getId());
+
+        List<RankingDTO> ranking = new ArrayList<>();
+        for (int i = 0; i < puntajes.size(); i++) {
+            PuntajeMiembro p = puntajes.get(i);
+            ranking.add(new RankingDTO(
+                    i + 1,
+                    p.getUsuario().getNombre(),
+                    p.getPuntos(),
+                    clasificacion.getMetaPuntos()
+            ));
+        }
+
+        long elapsedTime = System.currentTimeMillis() - startTime;
+        if (elapsedTime > 2000) {
+            throw new IllegalStateException("El tiempo de respuesta excedió 2 segundos");
+        }
+
+        return ranking;
+    }
+    
+    public List<HistorialPuntosDTO> obtenerHistorial(Long grupoId, String correo) {
+        grupoAuthorizationService.validarPertenenciaAlGrupo(grupoId, correo);
+
+        Usuario usuario = grupoFamiliarRepository.findMiembroEnGrupo(grupoId, correo)
+                .orElseThrow(() -> new IllegalStateException("No perteneces a este grupo"))
+                .getUsuario();
+
+        ClasificacionSemanal clasificacion = clasificacionRepository
+                .findByGrupoIdAndActivaTrue(grupoId)
+                .orElseThrow(() -> new IllegalArgumentException("No hay clasificación activa en este grupo"));
+
+        return historialPuntosRepository
+                .findByUsuarioIdAndClasificacionIdOrderByFechaDesc(usuario.getId(), clasificacion.getId())
+                .stream()
+                .map(h -> new HistorialPuntosDTO(
+                        h.getTarea().getNombre(),
+                        h.getPuntosObtenidos(),
+                        h.getFecha()
+                )).toList();
+    }
+
+    // Escenario 4 — Finalización automática diaria
+    @Scheduled(fixedRate = 86400000) // cada 24 horas
+    @Transactional
+    public void verificarFinalizacion() {
+        List<ClasificacionSemanal> activas = clasificacionRepository.findByActivaTrue();
+
+        for (ClasificacionSemanal clasificacion : activas) {
+            boolean fechaVencida = LocalDate.now().isAfter(clasificacion.getFechaFin());
+
+            List<PuntajeMiembro> puntajes = puntajeMiembroRepository
+                    .findByClasificacionIdOrderByPuntosDesc(clasificacion.getId());
+
+            boolean metaAlcanzada = puntajes.stream()
+                    .anyMatch(p -> p.getPuntos() >= clasificacion.getMetaPuntos());
+
+            if (fechaVencida || metaAlcanzada) {
+                clasificacion.setActiva(false);
+                clasificacionRepository.save(clasificacion);
+
+                if (!puntajes.isEmpty()) {
+                    PuntajeMiembro ganador = puntajes.get(0);
+                    String mensaje = "🏆 ¡" + ganador.getUsuario().getNombre()
+                            + " ganó la clasificación semanal con "
+                            + ganador.getPuntos() + " puntos!";
+
+                    clasificacion.getGrupo().getMiembros().forEach(gm ->
+                            notificacionService.crearNotificacion(gm.getUsuario(), mensaje, "CLASIFICACION_FINALIZADA")
+                    );
+                }
+            }
+        }
+    }
+    
 }

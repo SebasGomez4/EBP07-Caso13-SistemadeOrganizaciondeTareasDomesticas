@@ -2,7 +2,9 @@ package com.fabrica.soyla.controller;
 
 import com.fabrica.soyla.model.ClasificacionSemanal;
 import com.fabrica.soyla.model.CrearClasificacionDTO;
+import com.fabrica.soyla.model.HistorialPuntosDTO;
 import com.fabrica.soyla.model.PuntajeMiembro;
+import com.fabrica.soyla.model.RankingDTO;
 import com.fabrica.soyla.service.ClasificacionService;
 import jakarta.validation.Valid;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -49,6 +51,39 @@ public class ClasificacionController {
         try {
             List<PuntajeMiembro> clasificacion = clasificacionService.obtenerClasificacion(grupoId, correo);
             return ResponseEntity.ok(clasificacion);
+        } catch (IllegalStateException e) {
+            response.put("mensaje", e.getMessage());
+            return ResponseEntity.status(HttpStatus.FORBIDDEN).body(response);
+        } catch (IllegalArgumentException e) {
+            response.put("mensaje", e.getMessage());
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).body(response);
+        }
+    }
+    @GetMapping("/{grupoId}/ranking")
+    public ResponseEntity<?> obtenerRanking(@PathVariable Long grupoId) {
+        Authentication auth = SecurityContextHolder.getContext().getAuthentication();
+        String correo = (String) auth.getPrincipal();
+        Map<String, Object> response = new HashMap<>();
+        try {
+            List<RankingDTO> ranking = clasificacionService.obtenerRanking(grupoId, correo);
+            return ResponseEntity.ok(ranking);
+        } catch (IllegalStateException e) {
+            response.put("mensaje", e.getMessage());
+            return ResponseEntity.status(HttpStatus.FORBIDDEN).body(response);
+        } catch (IllegalArgumentException e) {
+            response.put("mensaje", e.getMessage());
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).body(response);
+        }
+    }
+
+    @GetMapping("/{grupoId}/historial")
+    public ResponseEntity<?> obtenerHistorial(@PathVariable Long grupoId) {
+        Authentication auth = SecurityContextHolder.getContext().getAuthentication();
+        String correo = (String) auth.getPrincipal();
+        Map<String, Object> response = new HashMap<>();
+        try {
+            List<HistorialPuntosDTO> historial = clasificacionService.obtenerHistorial(grupoId, correo);
+            return ResponseEntity.ok(historial);
         } catch (IllegalStateException e) {
             response.put("mensaje", e.getMessage());
             return ResponseEntity.status(HttpStatus.FORBIDDEN).body(response);

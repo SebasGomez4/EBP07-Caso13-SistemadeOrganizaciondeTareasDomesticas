@@ -137,6 +137,41 @@ public class GrupoFamiliarService {
             "El tiempo de respuesta excedió el límite máximo de 3 segundos. " +
             "Tiempo utilizado: " + elapsedTime + "ms");
     }
-}
+    }
+    
+    @Transactional
+    public void abandonarGrupo(Long grupoId, String correo) {
+        long startTime = System.currentTimeMillis();
+
+        GrupoMiembro miembro = grupoFamiliarRepository.findMiembroEnGrupo(grupoId, correo)
+                .orElseThrow(() -> new IllegalArgumentException("No perteneces a este grupo"));
+
+        GrupoFamiliar grupo = grupoFamiliarRepository.findById(grupoId)
+                .orElseThrow(() -> new IllegalArgumentException("Grupo no encontrado"));
+
+        // Si es el único miembro, elimina el grupo completo
+        if (grupo.getMiembros().size() == 1) {
+            eliminarGrupo(grupoId, correo);
+            return;
+        }
+
+        // Si es admin y es el único admin, no puede abandonar
+        if (miembro.getRol().equals("ADMIN")) {
+            long totalAdmins = grupoFamiliarRepository.countAdminsByGrupoId(grupoId);
+            if (totalAdmins <= 1) {
+                throw new IllegalStateException("Debes transferir la administración antes de abandonar el grupo");
+            }
+        }
+
+        grupo.getMiembros().remove(miembro);
+        grupoFamiliarRepository.save(grupo);
+
+        long elapsedTime = System.currentTimeMillis() - startTime;
+        if (elapsedTime > 2000) {
+            throw new IllegalStateException(
+                    "El tiempo de respuesta excedió el límite máximo de 2 segundos. " +
+                    "Tiempo utilizado: " + elapsedTime + "ms"
+            );
+        }
     }
 }

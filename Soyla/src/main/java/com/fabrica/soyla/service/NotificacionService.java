@@ -63,4 +63,8 @@ public class NotificacionService {
         emitter.onTimeout(() -> emitters.remove(usuarioId));
         return emitter;
     }
+
+    public long contarNoLeidas(Long usuarioId) {
+        return notificacionRepository.countByUsuarioIdAndLeidaFalse(usuarioId);
+    }
 }

@@ -3,6 +3,8 @@ package com.fabrica.soyla.service;
 import com.fabrica.soyla.model.GrupoMiembro;
 import com.fabrica.soyla.model.TareaDomestica;
 import com.fabrica.soyla.model.Usuario;
+import com.fabrica.soyla.repository.ClasificacionRepository;
+import com.fabrica.soyla.repository.PuntajeMiembroRepository;
 import com.fabrica.soyla.repository.TareaRepository;
 import com.fabrica.soyla.repository.UsuarioRepository;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -25,6 +27,12 @@ public class TareaStateService {
 
     @Autowired
     private NotificacionService notificacionService;
+
+    @Autowired
+    private ClasificacionRepository clasificacionRepository;
+
+    @Autowired
+    private PuntajeMiembroRepository puntajeMiembroRepository;
 
     @Transactional
     public TareaDomestica cambiarEstado(Long tareaId, String nuevoEstado, String correoUsuario) {
@@ -72,6 +80,21 @@ public class TareaStateService {
             tarea.getGrupo().getMiembros().forEach(gm ->
                 notificacionService.crearNotificacion(gm.getUsuario(), mensaje, tipo)
             );
+
+            // Sumar puntos al responsable si hay clasificación activa
+        if ("COMPLETADA".equals(nuevoEstado) && tarea.getResponsable() != null) {
+        clasificacionRepository.findByGrupoIdAndActivaTrue(tarea.getGrupo().getId())
+                .ifPresent(clasificacion -> {
+                    puntajeMiembroRepository
+                            .findByClasificacionIdAndUsuarioId(
+                                    clasificacion.getId(),
+                                    tarea.getResponsable().getId())
+                            .ifPresent(puntaje -> {
+                                puntaje.setPuntos(puntaje.getPuntos() + clasificacion.getPuntosPorTarea());
+                                puntajeMiembroRepository.save(puntaje);
+                            });
+                });
+    }
 
         return saved;
     }

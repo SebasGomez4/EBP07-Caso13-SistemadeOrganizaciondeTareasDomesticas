@@ -52,10 +52,26 @@ public class TareaStateService {
         tarea.setEstado(nuevoEstado);
         TareaDomestica saved = tareaRepository.saveAndFlush(tarea);
 
-        String mensaje = "El estado de la tarea '" + tarea.getNombre() + "' cambió a " + nuevoEstado;
-        tarea.getGrupo().getMiembros().forEach(gm ->
-                notificacionService.crearNotificacion(gm.getUsuario(), mensaje, "CAMBIO_ESTADO")
-        );
+        String tipo;
+        String mensaje;
+
+        if ("COMPLETADA".equals(nuevoEstado)) {
+            String nombreResponsable = tarea.getResponsable() != null
+                    ? tarea.getResponsable().getNombre()
+                    : "Sin responsable";
+            String fechaHora = java.time.LocalDateTime.now()
+                    .format(java.time.format.DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm"));
+            mensaje = "✅ La tarea '" + tarea.getNombre() + "' fue completada por "
+                    + nombreResponsable + " el " + fechaHora;
+            tipo = "TAREA_COMPLETADA";
+            } else {
+            mensaje = "El estado de la tarea '" + tarea.getNombre() + "' cambió a " + nuevoEstado;
+            tipo = "CAMBIO_ESTADO";
+            }
+
+            tarea.getGrupo().getMiembros().forEach(gm ->
+                notificacionService.crearNotificacion(gm.getUsuario(), mensaje, tipo)
+            );
 
         return saved;
     }

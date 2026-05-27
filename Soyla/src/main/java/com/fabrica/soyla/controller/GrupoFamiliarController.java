@@ -63,27 +63,45 @@ public class GrupoFamiliarController {
     }
 
     @DeleteMapping("/{grupoId}/eliminar")
-public ResponseEntity<Map<String, String>> eliminarGrupo(
-        @PathVariable Long grupoId,
-        @RequestHeader("Authorization") String authHeader) {
+    public ResponseEntity<Map<String, String>> eliminarGrupo(
+            @PathVariable Long grupoId,
+            @RequestHeader("Authorization") String authHeader) {
 
-    Authentication auth = SecurityContextHolder.getContext().getAuthentication();
-    String correo = (String) auth.getPrincipal();
-    Map<String, String> response = new HashMap<>();
+        Authentication auth = SecurityContextHolder.getContext().getAuthentication();
+        String correo = (String) auth.getPrincipal();
+        Map<String, String> response = new HashMap<>();
 
-    try {
-        grupoFamiliarService.eliminarGrupo(grupoId, correo);
-        response.put("mensaje", "El grupo familiar ha sido eliminado exitosamente. Esta acción es irreversible.");
-        response.put("estado", "exito");
-        return ResponseEntity.ok(response);
-    } catch (IllegalStateException e) {
-        response.put("mensaje", e.getMessage());
-        response.put("estado", "error");
-        return ResponseEntity.status(HttpStatus.FORBIDDEN).body(response);
-    } catch (IllegalArgumentException e) {
-        response.put("mensaje", e.getMessage());
-        response.put("estado", "error");
-        return ResponseEntity.status(HttpStatus.NOT_FOUND).body(response);
+        try {
+            grupoFamiliarService.eliminarGrupo(grupoId, correo);
+            response.put("mensaje", "El grupo familiar ha sido eliminado exitosamente. Esta acción es irreversible.");
+            response.put("estado", "exito");
+            return ResponseEntity.ok(response);
+        } catch (IllegalStateException e) {
+            response.put("mensaje", e.getMessage());
+            response.put("estado", "error");
+            return ResponseEntity.status(HttpStatus.FORBIDDEN).body(response);
+        } catch (IllegalArgumentException e) {
+            response.put("mensaje", e.getMessage());
+            response.put("estado", "error");
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).body(response);
+        }
     }
-}
+
+    @DeleteMapping("/{grupoId}/abandonar")
+    public ResponseEntity<?> abandonarGrupo(@PathVariable Long grupoId) {
+        Authentication auth = SecurityContextHolder.getContext().getAuthentication();
+        String correo = (String) auth.getPrincipal();
+        Map<String, String> response = new HashMap<>();
+        try {
+            grupoFamiliarService.abandonarGrupo(grupoId, correo);
+            response.put("mensaje", "Has abandonado el grupo exitosamente");
+            return ResponseEntity.ok(response);
+        } catch (IllegalStateException e) {
+            response.put("mensaje", e.getMessage());
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(response);
+        } catch (IllegalArgumentException e) {
+            response.put("mensaje", e.getMessage());
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).body(response);
+        }
+    }
 }

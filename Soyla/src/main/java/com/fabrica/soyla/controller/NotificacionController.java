@@ -13,8 +13,6 @@ import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
-import com.fabrica.soyla.service.AlertaTareaService;
-import com.fabrica.soyla.service.TareaVencidaService;
 import java.util.List;
 import java.util.Map;
 
@@ -77,5 +75,24 @@ private AlertaTareaService alertaTareaService;
             "estado", "exito",
             "mensaje", "Verificación de tareas vencidas ejecutada correctamente"
     ));
-}
+    }
+
+    @GetMapping("/no-leidas")
+    public ResponseEntity<Map<String, Long>> contarNoLeidas() {
+        long startTime = System.currentTimeMillis();
+
+        Authentication auth = SecurityContextHolder.getContext().getAuthentication();
+        String correo = (String) auth.getPrincipal();
+        Usuario usuario = usuarioRepository.findByCorreo(correo)
+                .orElseThrow(() -> new IllegalArgumentException("Usuario no encontrado"));
+
+        long cantidad = notificacionService.contarNoLeidas(usuario.getId());
+
+        long elapsedTime = System.currentTimeMillis() - startTime;
+        if (elapsedTime > 2000) {
+            throw new IllegalStateException("El tiempo de respuesta excedió 2 segundos");
+        }
+
+        return ResponseEntity.ok(Map.of("noLeidas", cantidad));
+    }
 }

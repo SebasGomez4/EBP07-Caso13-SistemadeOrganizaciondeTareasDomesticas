@@ -23,9 +23,10 @@ public class TareaDomestica {
     @NotBlank(message = "La descripción es obligatoria")
     private String descripcion;
 
+
     @NotNull(message = "La fecha de vencimiento es obligatoria")
-    @FutureOrPresent(message = "La fecha de vencimiento debe ser posterior a la actual.")
     @JsonFormat(pattern = "yyyy-MM-dd")
+    @FutureOrPresent(message = "La fecha de vencimiento debe ser posterior a la actual.")
     private LocalDate fechaVencimiento;
 
     @ManyToOne
@@ -35,6 +36,7 @@ public class TareaDomestica {
     private String prioridad;
     private String frecuencia;
     private String estado;
+    private boolean notificacionVencidaEnviada = false;
 
     @ManyToOne
     @JoinColumn(name = "grupo_id")

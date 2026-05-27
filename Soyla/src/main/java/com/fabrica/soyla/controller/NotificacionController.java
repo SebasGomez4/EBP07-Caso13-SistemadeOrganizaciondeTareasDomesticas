@@ -5,6 +5,8 @@ import com.fabrica.soyla.model.Usuario;
 import com.fabrica.soyla.repository.UsuarioRepository;
 import com.fabrica.soyla.service.AlertaTareaService;
 import com.fabrica.soyla.service.NotificacionService;
+import com.fabrica.soyla.service.TareaVencidaService;
+
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
@@ -12,6 +14,7 @@ import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
 import com.fabrica.soyla.service.AlertaTareaService;
+import com.fabrica.soyla.service.TareaVencidaService;
 import java.util.List;
 import java.util.Map;
 
@@ -27,6 +30,9 @@ private AlertaTareaService alertaTareaService;
 
     @Autowired
     private UsuarioRepository usuarioRepository;
+
+    @Autowired
+    private TareaVencidaService tareaVencidaService;
 
     @GetMapping("/stream")
     public SseEmitter streamNotifications() {
@@ -63,4 +69,13 @@ private AlertaTareaService alertaTareaService;
         notificacionService.marcarComoLeida(id, usuario.getId());
         return ResponseEntity.ok(Map.of("estado", "exito"));
     }
+
+    @PostMapping("/verificar-vencidas")
+    public ResponseEntity<Map<String, String>> verificarVencidas() {
+        tareaVencidaService.verificarManualmente();
+        return ResponseEntity.ok(Map.of(
+            "estado", "exito",
+            "mensaje", "Verificación de tareas vencidas ejecutada correctamente"
+    ));
+}
 }

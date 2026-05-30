@@ -48,32 +48,32 @@ export function MembersList({ groupId, currentUserEmail, currentUserRole }: Memb
   const getRoleIcon = (role: string) => {
     switch (role) {
       case "Administrador":
-        return <Shield className="h-4 w-4 text-purple-600" />;
+        return <Shield className="h-3.5 w-3.5 text-purple-600" />;
       case "Coadministrador":
         return <UserCog className="h-4 w-4 text-blue-600" />;
       default:
-        return <User className="h-4 w-4 text-gray-600" />;
+        return <User className="h-3.5 w-3.5 text-gray-600" />;
     }
   };
 
   const getRoleBadgeStyle = (role: string) => {
     switch (role) {
       case "Administrador":
-        return "bg-purple-100 text-purple-700 border-purple-200";
+        return "bg-purple-50 text-purple-700 border-purple-200";
       case "Coadministrador":
         return "bg-blue-100 text-blue-700 border-blue-200";
       default:
-        return "bg-gray-100 text-gray-700 border-gray-200";
+        return "bg-gray-50 text-gray-600 border-gray-200";
     }
   };
 
   if (members.length === 0) {
     return (
-      <Card className="shadow-sm border-purple-100">
-        <CardHeader>
-          <CardTitle className="text-xl flex items-center gap-2">
-            <Users className="h-5 w-5 text-purple-500" />
-            Miembros del grupo
+      <Card className="border-purple-100/50 shadow-sm">
+        <CardHeader className="pb-4">
+          <CardTitle className="text-lg font-semibold flex items-center gap-2">
+            <Users className="h-4 w-4 text-purple-600" />
+            Miembros
           </CardTitle>
         </CardHeader>
         <CardContent>
@@ -86,22 +86,27 @@ export function MembersList({ groupId, currentUserEmail, currentUserRole }: Memb
   }
 
   return (
-    <Card className="shadow-sm border-purple-100">
-      <CardHeader>
-        <CardTitle className="text-xl flex items-center gap-2">
-          <Users className="h-5 w-5 text-purple-500" />
-          Miembros del grupo
+    <Card className="border-purple-100/50 shadow-sm">
+      <CardHeader className="pb-4">
+        <CardTitle className="text-lg font-semibold flex items-center gap-2">
+          <Users className="h-4 w-4 text-purple-600" />
+          Miembros
         </CardTitle>
         <CardDescription>
           {members.length === 1 ? "1 miembro en el grupo" : `${members.length} miembros en el grupo`}
         </CardDescription>
       </CardHeader>
-      <CardContent>
-        <div className="space-y-3">
-          {members.map((member) => (
+      <CardContent className="space-y-2">
+        {members.map((member) => {
+          const isMe = member.email === currentUserEmail;
+          return (
             <div
               key={member.email}
-              className="flex items-center justify-between p-4 bg-white border border-purple-100 rounded-lg hover:border-purple-200 transition-colors"
+              className={`group flex items-center gap-3 p-3 rounded-lg transition-all ${
+                isMe
+                  ? "bg-purple-50/50 border border-purple-200/50"
+                  : "bg-white border border-gray-100 hover:border-purple-200/50 hover:bg-purple-50/30"
+              }`}
             >
               <div className="flex items-center gap-3 flex-1 min-w-0">
                 <div className="w-10 h-10 rounded-full bg-gradient-to-br from-purple-100 to-blue-100 flex items-center justify-center shrink-0">
@@ -140,7 +145,7 @@ export function MembersList({ groupId, currentUserEmail, currentUserRole }: Memb
                     value={member.role}
                     onValueChange={(value) => void handleRoleChange(member.email, value as GroupMember["role"])}
                   >
-                    <SelectTrigger className="w-[160px] h-9 text-sm border-purple-200 hover:bg-purple-50">
+                    <SelectTrigger className="w-[140px] h-8 text-xs border-gray-200 hover:border-purple-300 hover:bg-purple-50/50">
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
@@ -151,9 +156,21 @@ export function MembersList({ groupId, currentUserEmail, currentUserRole }: Memb
                   </Select>
                 </div>
               )}
+
+              {/* Badge de rol (no admin o es el usuario actual) */}
+              {(!isAdmin || isMe) && (
+                <div
+                  className={`shrink-0 inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-xs font-medium border ${getRoleBadgeStyle(
+                    member.role
+                  )}`}
+                >
+                  {getRoleIcon(member.role)}
+                  {member.role}
+                </div>
+              )}
             </div>
-          ))}
-        </div>
+          );
+        })}
       </CardContent>
     </Card>
   );

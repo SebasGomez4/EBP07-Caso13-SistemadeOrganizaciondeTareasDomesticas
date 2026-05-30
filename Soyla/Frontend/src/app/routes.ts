@@ -12,6 +12,8 @@ import {
   InviteAccessPage,
 } from "./ProtectedPages";
 
+import { ConfirmEmail } from "./pages/ConfirmEmail";
+
 export const router = createBrowserRouter([
   {
     Component: RootLayout,
@@ -51,6 +53,10 @@ export const router = createBrowserRouter([
       {
         path: "/unirse/:inviteCode",
         Component: InviteAccessPage,
+      },
+      {
+        path: "/confirm-email/:token",
+        Component: ConfirmEmail,
       },
     ],
   },

@@ -201,6 +201,9 @@ export function Profile() {
           <p className="text-xs text-gray-400 text-center mt-5">
             Solo se permite editar el correo electronico y el numero de telefono.
           </p>
+
+          {/* Información de protección de datos */}
+          <SecurityIndicator variant="detailed" className="mt-6" />
         </div>
       </div>
     </div>

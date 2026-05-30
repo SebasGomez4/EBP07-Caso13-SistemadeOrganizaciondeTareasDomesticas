@@ -16,6 +16,13 @@ import {
   SelectValue,
 } from "./ui/select";
 import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "./ui/dropdown-menu";
+import {
   ClipboardList,
   Calendar,
   User,
@@ -27,6 +34,13 @@ import {
   Loader2,
   Trash2,
   Repeat,
+  BellRing,
+  Wifi,
+  MoreVertical,
+  CircleDot,
+  X,
+  ChevronDown,
+  ChevronUp,
 } from "lucide-react";
 import {
   assignTask,
@@ -40,16 +54,18 @@ import {
 interface TasksListProps {
   groupId: string;
   refreshTrigger?: number;
+  createTaskButton?: React.ReactNode;
+  currentUserRole?: "Administrador" | "Coadministrador" | "Colaborador";
 }
 
 function getStatusBadgeStyle(status: string) {
   switch (status) {
     case "completed":
-      return "bg-green-100 text-green-700 border-green-200";
+      return "bg-green-50 text-green-700 border-green-200";
     case "in_progress":
       return "bg-blue-100 text-blue-700 border-blue-200";
     default:
-      return "bg-gray-100 text-gray-700 border-gray-200";
+      return "bg-gray-50 text-gray-600 border-gray-200";
   }
 }
 
@@ -60,31 +76,31 @@ function getStatusText(status: string) {
     case "in_progress":
       return "En progreso";
     default:
-      return "Pendiente";
+      return "Sin empezar";
   }
 }
 
 function getStatusIcon(status: string) {
   switch (status) {
     case "completed":
-      return <CheckCircle2 className="h-4 w-4 text-green-600" />;
+      return <CheckCircle2 className="h-3.5 w-3.5 text-green-600" />;
     case "in_progress":
       return <Clock className="h-4 w-4 text-blue-600" />;
     default:
-      return <CircleDashed className="h-4 w-4 text-gray-600" />;
+      return <CircleDashed className="h-3.5 w-3.5 text-gray-600" />;
   }
 }
 
 function getPriorityBadgeStyle(priority?: string | null) {
   switch (priority) {
     case "alta":
-      return "bg-red-100 text-red-700 border-red-200";
+      return "bg-red-50 text-red-700 border-red-200";
     case "media":
-      return "bg-orange-100 text-orange-700 border-orange-200";
+      return "bg-orange-50 text-orange-700 border-orange-200";
     case "baja":
-      return "bg-yellow-100 text-yellow-700 border-yellow-200";
+      return "bg-yellow-50 text-yellow-700 border-yellow-200";
     default:
-      return "bg-gray-100 text-gray-500 border-gray-200";
+      return "bg-gray-50 text-gray-500 border-gray-200";
   }
 }
 
@@ -112,7 +128,7 @@ function formatFrequency(frequency?: string) {
   }[frequency] || frequency;
 }
 
-export function TasksList({ groupId, refreshTrigger }: TasksListProps) {
+export function TasksList({ groupId, refreshTrigger, createTaskButton, currentUserRole }: TasksListProps) {
   const [tasks, setTasks] = useState<Task[]>([]);
   const [groupMembers, setGroupMembers] = useState<GroupMember[]>([]);
   const [loading, setLoading] = useState(true);
@@ -127,6 +143,24 @@ export function TasksList({ groupId, refreshTrigger }: TasksListProps) {
   const [isDeleting, setIsDeleting] = useState(false);
   const [showDeleteSuccessMessage, setShowDeleteSuccessMessage] = useState(false);
   const [deletedTaskName, setDeletedTaskName] = useState("");
+
+  const [updatingTaskId, setUpdatingTaskId] = useState<string | null>(null);
+  const [showStatusSuccessMessage, setShowStatusSuccessMessage] = useState(false);
+  const [statusSuccessTaskName, setStatusSuccessTaskName] = useState("");
+  const [showRestrictedMessage, setShowRestrictedMessage] = useState(false);
+
+  const [showReconnectNotice, setShowReconnectNotice] = useState(false);
+  const [showColaboradorRestricted, setShowColaboradorRestricted] = useState(false);
+  const [showNoReassignCompleted, setShowNoReassignCompleted] = useState(false);
+
+  const isColaborador = currentUserRole === "Colaborador";
+
+  const [recentActivity, setRecentActivity] = useState<CompletionAlert[]>([]);
+  const [newActivityCount, setNewActivityCount] = useState(0);
+  const [isActivityExpanded, setIsActivityExpanded] = useState(true);
+  const [isTasksExpanded, setIsTasksExpanded] = useState(false);
+
+  const INITIAL_TASKS_VISIBLE = 4;
 
   useEffect(() => {
     const loadData = async () => {
@@ -150,6 +184,16 @@ export function TasksList({ groupId, refreshTrigger }: TasksListProps) {
   }, [groupId, refreshTrigger]);
 
   const handleOpenAssignDialog = (task: Task) => {
+    if (isColaborador) {
+      setShowColaboradorRestricted(true);
+      setTimeout(() => setShowColaboradorRestricted(false), 4000);
+      return;
+    }
+    if (task.status === "completed" && (!task.frequency || task.frequency === "ninguna")) {
+      setShowNoReassignCompleted(true);
+      setTimeout(() => setShowNoReassignCompleted(false), 4000);
+      return;
+    }
     setSelectedTask(task);
     setSelectedMember(task.assignedToEmail || "");
     setAssignDialogOpen(true);
@@ -221,22 +265,30 @@ export function TasksList({ groupId, refreshTrigger }: TasksListProps) {
 
   if (tasks.length === 0) {
     return (
-      <Card className="shadow-sm border-purple-100">
-        <CardHeader>
-          <CardTitle className="text-xl flex items-center gap-2">
-            <ClipboardList className="h-5 w-5 text-purple-500" />
-            Tareas del grupo
+      <Card className="border-purple-100/50 shadow-sm">
+        <CardHeader className="pb-4">
+          <CardTitle className="text-lg font-semibold flex items-center gap-2">
+            <ClipboardList className="h-4 w-4 text-purple-600" />
+            Tareas
           </CardTitle>
           <CardDescription>Lista de tareas domesticas del grupo familiar</CardDescription>
         </CardHeader>
-        <CardContent>
-          <div className="flex flex-col items-center justify-center py-12 text-center">
+        <CardContent className="space-y-4">
+          {/* Botón crear tarea - siempre visible */}
+          {createTaskButton && (
+            <div className="pb-2">
+              {createTaskButton}
+            </div>
+          )}
+
+          {/* Estado vacío */}
+          <div className="flex flex-col items-center justify-center py-8 text-center">
             <div className="w-16 h-16 bg-purple-50 rounded-full flex items-center justify-center mb-4">
               <ClipboardList className="h-8 w-8 text-purple-400" />
             </div>
-            <p className="text-gray-600 font-medium mb-1">No existen tareas registradas</p>
+            <p className="text-gray-600 font-medium mb-1">No hay tareas registradas</p>
             <p className="text-sm text-gray-500">
-              Crea una tarea para empezar a organizar las responsabilidades del hogar
+              Crea tu primera tarea para empezar a organizar el hogar
             </p>
           </div>
         </CardContent>
@@ -249,24 +301,34 @@ export function TasksList({ groupId, refreshTrigger }: TasksListProps) {
       {showSuccessMessage && (
         <div className="fixed top-4 right-4 z-50 flex items-center gap-3 bg-white border border-green-200 shadow-lg rounded-lg px-5 py-3 transition-all max-w-md">
           <CheckCircle2 className="h-5 w-5 text-green-500 shrink-0" />
-          <div>
+          <div className="flex-1">
             <p className="text-sm font-medium text-gray-900">Tarea asignada exitosamente</p>
-            <p className="text-xs text-gray-600 mt-0.5">
-              La tarea "{successTaskName}" fue asignada correctamente
-            </p>
+            <p className="text-xs text-gray-600 mt-0.5">La tarea "{successTaskName}" fue asignada correctamente</p>
           </div>
+          <button
+            onClick={() => setShowSuccessMessage(false)}
+            className="shrink-0 p-1 rounded-md hover:bg-gray-100 transition-colors"
+            aria-label="Cerrar notificación"
+          >
+            <X className="h-4 w-4 text-gray-400 hover:text-gray-600" />
+          </button>
         </div>
       )}
 
       {showDeleteSuccessMessage && (
         <div className="fixed top-4 right-4 z-50 flex items-center gap-3 bg-white border border-green-200 shadow-lg rounded-lg px-5 py-3 transition-all max-w-md">
           <CheckCircle2 className="h-5 w-5 text-green-500 shrink-0" />
-          <div>
+          <div className="flex-1">
             <p className="text-sm font-medium text-gray-900">Tarea eliminada exitosamente</p>
-            <p className="text-xs text-gray-600 mt-0.5">
-              La tarea "{deletedTaskName}" fue eliminada correctamente
-            </p>
+            <p className="text-xs text-gray-600 mt-0.5">La tarea "{deletedTaskName}" fue eliminada correctamente</p>
           </div>
+          <button
+            onClick={() => setShowDeleteSuccessMessage(false)}
+            className="shrink-0 p-1 rounded-md hover:bg-gray-100 transition-colors"
+            aria-label="Cerrar notificación"
+          >
+            <X className="h-4 w-4 text-gray-400 hover:text-gray-600" />
+          </button>
         </div>
       )}
 
@@ -283,19 +345,15 @@ export function TasksList({ groupId, refreshTrigger }: TasksListProps) {
               Selecciona el miembro del grupo que sera responsable de esta tarea
             </DialogDescription>
           </DialogHeader>
-
           {selectedTask && (
             <div className="space-y-5 mt-4">
               <div className="bg-purple-50/50 border border-purple-100 rounded-lg p-4">
                 <p className="text-xs text-gray-500 mb-1">Tarea a asignar</p>
                 <p className="font-medium text-gray-900">{selectedTask.name}</p>
                 {selectedTask.description && (
-                  <p className="text-sm text-gray-600 mt-1 line-clamp-2">
-                    {selectedTask.description}
-                  </p>
+                  <p className="text-sm text-gray-600 mt-1 line-clamp-2">{selectedTask.description}</p>
                 )}
               </div>
-
               <div className="space-y-2">
                 <label className="text-sm font-medium text-gray-700">
                   Asignar a <span className="text-red-500">*</span>
@@ -317,21 +375,11 @@ export function TasksList({ groupId, refreshTrigger }: TasksListProps) {
                   </SelectContent>
                 </Select>
               </div>
-
               <div className="flex justify-end gap-3 pt-4">
-                <Button
-                  type="button"
-                  variant="outline"
-                  onClick={() => setAssignDialogOpen(false)}
-                  disabled={isAssigning}
-                >
+                <Button type="button" variant="outline" onClick={() => setAssignDialogOpen(false)} disabled={isAssigning}>
                   Cancelar
                 </Button>
-                <Button
-                  onClick={handleAssignTask}
-                  disabled={!selectedMember || isAssigning}
-                  className="bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-700 hover:to-blue-700"
-                >
+                <Button onClick={handleAssignTask} disabled={!selectedMember || isAssigning} className="bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-700 hover:to-blue-700">
                   {isAssigning ? (
                     <>
                       <Loader2 className="h-4 w-4 mr-2 animate-spin" />
@@ -363,34 +411,20 @@ export function TasksList({ groupId, refreshTrigger }: TasksListProps) {
               Esta accion no se puede deshacer. La tarea sera eliminada permanentemente.
             </DialogDescription>
           </DialogHeader>
-
           {taskToDelete && (
             <div className="space-y-5 mt-4">
               <div className="bg-red-50/50 border border-red-100 rounded-lg p-4">
                 <p className="text-xs text-gray-500 mb-1">Desea eliminar esta tarea?</p>
                 <p className="font-medium text-gray-900">{taskToDelete.name}</p>
                 {taskToDelete.description && (
-                  <p className="text-sm text-gray-600 mt-1 line-clamp-2">
-                    {taskToDelete.description}
-                  </p>
+                  <p className="text-sm text-gray-600 mt-1 line-clamp-2">{taskToDelete.description}</p>
                 )}
               </div>
-
               <div className="flex justify-end gap-3 pt-2">
-                <Button
-                  type="button"
-                  variant="outline"
-                  onClick={() => setDeleteDialogOpen(false)}
-                  disabled={isDeleting}
-                >
+                <Button type="button" variant="outline" onClick={() => setDeleteDialogOpen(false)} disabled={isDeleting}>
                   Cancelar
                 </Button>
-                <Button
-                  onClick={handleDeleteTask}
-                  disabled={isDeleting}
-                  variant="destructive"
-                  className="bg-red-600 hover:bg-red-700"
-                >
+                <Button onClick={handleDeleteTask} disabled={isDeleting} variant="destructive" className="bg-red-600 hover:bg-red-700">
                   {isDeleting ? (
                     <>
                       <Loader2 className="h-4 w-4 mr-2 animate-spin" />
@@ -507,9 +541,31 @@ export function TasksList({ groupId, refreshTrigger }: TasksListProps) {
                     </Button>
                   </div>
                 </div>
-              </div>
-            ))}
+              );
+            })}
           </div>
+
+          {/* Botón Ver más / Ver menos */}
+          {tasks.length > INITIAL_TASKS_VISIBLE && (
+            <div className="flex justify-center pt-3">
+              <button
+                onClick={() => setIsTasksExpanded(!isTasksExpanded)}
+                className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-purple-600 hover:text-purple-700 hover:bg-purple-50 rounded-lg transition-colors"
+              >
+                {isTasksExpanded ? (
+                  <>
+                    <ChevronUp className="h-4 w-4" />
+                    Ver menos tareas
+                  </>
+                ) : (
+                  <>
+                    <ChevronDown className="h-4 w-4" />
+                    Ver más tareas ({tasks.length - INITIAL_TASKS_VISIBLE} ocultas)
+                  </>
+                )}
+              </button>
+            </div>
+          )}
         </CardContent>
       </Card>
     </>

@@ -7,12 +7,27 @@ import { AppLogo } from "../components/AppLogo";
 import { type FamilyGroup, listGroups } from "../lib/api";
 import { clearSession, getActiveSession, markLogoutSuccess, touchSession } from "../lib/session";
 
+interface FamilyGroup {
+  id: string;
+  name: string;
+  createdBy: string;
+  createdAt: number;
+}
+
+interface UserGroup {
+  id: string;
+  name: string;
+  role: "Administrador" | "Coadministrador" | "Colaborador";
+}
+
 export function Home() {
   const navigate = useNavigate();
   const [userName, setUserName] = useState("");
   const [groups, setGroups] = useState<FamilyGroup[]>([]);
   const [loadingGroups, setLoadingGroups] = useState(true);
   const [showLoginToast, setShowLoginToast] = useState(false);
+  const [userGroups, setUserGroups] = useState<UserGroup[]>([]);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     const session = getActiveSession();
@@ -59,10 +74,66 @@ export function Home() {
     };
   }, [navigate]);
 
+  // Escenario 1 y 5: Cargar grupos del usuario con datos actuales
+  const loadUserGroups = (email: string) => {
+    const groups: FamilyGroup[] = JSON.parse(localStorage.getItem("familyGroups") || "[]");
+    const members: Record<string, string[]> = JSON.parse(localStorage.getItem("groupMembers") || "{}");
+    const roles: Record<string, Record<string, string>> = JSON.parse(localStorage.getItem("groupRoles") || "{}");
+
+    const userGroupsList: UserGroup[] = [];
+
+    groups.forEach((group) => {
+      // Verificar si el usuario es creador o miembro del grupo
+      const isCreator = group.createdBy === email;
+      const groupMembers = members[group.id] || [];
+      const isMember = groupMembers.includes(email);
+
+      if (isCreator || isMember) {
+        // Determinar el rol del usuario
+        let userRole: "Administrador" | "Coadministrador" | "Colaborador" = "Colaborador";
+
+        if (isCreator) {
+          userRole = "Administrador";
+        } else {
+          const groupRoles = roles[group.id] || {};
+          const roleInGroup = groupRoles[email] as "Administrador" | "Coadministrador" | "Colaborador" | undefined;
+          userRole = roleInGroup || "Colaborador";
+        }
+
+        userGroupsList.push({
+          id: group.id,
+          name: group.name,
+          role: userRole,
+        });
+      }
+    });
+
+    setUserGroups(userGroupsList);
+  };
+
   const handleLogout = () => {
     clearSession();
     markLogoutSuccess();
     navigate("/");
+  };
+
+  // Escenario 3: Navegar al grupo seleccionado
+  const handleGroupClick = (groupId: string) => {
+    navigate(`/grupo/${groupId}`);
+  };
+
+  // Función helper para obtener ícono según el rol
+  const getRoleIcon = (role: string) => {
+    if (role === "Administrador") return <Shield className="h-4 w-4 text-purple-600" />;
+    if (role === "Coadministrador") return <UserCog className="h-4 w-4 text-blue-600" />;
+    return <User className="h-4 w-4 text-gray-600" />;
+  };
+
+  // Helper para obtener color de badge según rol
+  const getRoleBadgeStyle = (role: string) => {
+    if (role === "Administrador") return "bg-purple-100 text-purple-700 border-purple-200";
+    if (role === "Coadministrador") return "bg-blue-100 text-blue-700 border-blue-200";
+    return "bg-gray-100 text-gray-700 border-gray-200";
   };
 
   return (
@@ -139,8 +210,21 @@ export function Home() {
                   Crear grupo familiar
                 </Button>
               </div>
-            </CardContent>
-          </Card>
+            ) : (
+              /* Escenario 2: Usuario sin grupos - Estado vacío moderno */
+              <Card className="max-w-2xl mx-auto shadow-xl border-purple-100/50 backdrop-blur-sm bg-white/80 overflow-hidden">
+                <div className="absolute inset-0 bg-gradient-to-br from-purple-50/50 via-transparent to-blue-50/50" />
+                <CardContent className="relative pt-12 pb-12 px-6 sm:px-10">
+                  <div className="text-center space-y-8">
+                    {/* Icono decorativo grande */}
+                    <div className="relative inline-block">
+                      <div className="w-24 h-24 mx-auto rounded-3xl bg-gradient-to-br from-purple-500 to-blue-500 flex items-center justify-center shadow-lg">
+                        <Users className="h-12 w-12 text-white" />
+                      </div>
+                      {/* Anillos decorativos */}
+                      <div className="absolute inset-0 w-24 h-24 mx-auto rounded-3xl border-4 border-purple-200 animate-ping opacity-20" />
+                      <div className="absolute -inset-3 rounded-3xl border border-purple-100" />
+                    </div>
 
           <Card className="shadow-sm border-purple-100">
             <CardHeader>

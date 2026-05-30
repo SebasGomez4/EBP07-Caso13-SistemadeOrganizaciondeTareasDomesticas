@@ -2,8 +2,9 @@ import { useEffect, useState } from "react";
 import { useNavigate, useParams } from "react-router";
 import { Button } from "../components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "../components/ui/card";
-import { Home, Users, LogOut, UserPlus, Copy, CheckCheck, Clock, Link2 } from "lucide-react";
+import { Home, Users, LogOut, UserPlus, Copy, CheckCheck, Clock, Link2, UserMinus, AlertTriangle, Trash2, MoreVertical } from "lucide-react";
 import { AppLogo } from "../components/AppLogo";
+import { NotificationBell } from "../components/NotificationBell";
 import { CreateTaskForm } from "../components/CreateTaskForm";
 import { MembersList } from "../components/MembersList";
 import { TasksList } from "../components/TasksList";
@@ -30,6 +31,15 @@ export function GroupView() {
   const [generatingInvite, setGeneratingInvite] = useState(false);
   const [memberCount, setMemberCount] = useState(0);
   const [tasksRefreshTrigger, setTasksRefreshTrigger] = useState(0);
+
+  // ── Leave group state ──
+  const [showLeaveDialog, setShowLeaveDialog] = useState(false);
+  const [isOnlyAdmin, setIsOnlyAdmin] = useState(false);
+  const [leavingGroup, setLeavingGroup] = useState(false);
+
+  // ── Delete group state ──
+  const [showDeleteDialog, setShowDeleteDialog] = useState(false);
+  const [deletingGroup, setDeletingGroup] = useState(false);
 
   useEffect(() => {
     const session = getActiveSession();
@@ -86,10 +96,46 @@ export function GroupView() {
     }
 
     setGeneratingInvite(true);
+<<<<<<< HEAD
     try {
       const invite = await createInvite(groupId);
       setInviteLink(`${window.location.origin}/unirse/${invite.code}`);
       setInviteExpiresAt(new Date(invite.expiresAt).getTime());
+=======
+
+    setTimeout(() => {
+      if (!group) return;
+
+      const existing = getActiveInvite(group.id);
+      if (existing) {
+        const baseUrl = window.location.origin;
+        setInviteLink(`${baseUrl}/unirse/${existing.code}`);
+        setInviteExpiresAt(existing.expiresAt);
+        setShowInvite(true);
+        setGeneratingInvite(false);
+        return;
+      }
+
+      const code = generateInviteCode();
+      const now = Date.now();
+      const newInvite: InviteRecord = {
+        code,
+        groupId: group.id,
+        groupName: group.name,
+        createdAt: now,
+        expiresAt: now + INVITE_TTL,
+      };
+
+      const invites: InviteRecord[] = JSON.parse(
+        localStorage.getItem("familyInvites") || "[]"
+      );
+      invites.push(newInvite);
+      localStorage.setItem("familyInvites", JSON.stringify(invites));
+
+      const baseUrl = window.location.origin;
+      setInviteLink(`${baseUrl}/unirse/${code}`);
+      setInviteExpiresAt(newInvite.expiresAt);
+>>>>>>> upstream/Front
       setShowInvite(true);
     } finally {
       setGeneratingInvite(false);
@@ -127,19 +173,20 @@ export function GroupView() {
       <div className="bg-white/40 backdrop-blur-sm border-b border-purple-100/50">
         <div className="container mx-auto max-w-6xl px-6 py-4 flex items-center justify-between">
           <AppLogo size="sm" showTagline={false} />
-          <div className="flex items-center gap-4">
+          <div className="flex items-center gap-2">
             <Button
               variant="outline"
               onClick={() => navigate("/home")}
               className="flex items-center gap-2 border-purple-200 hover:bg-purple-50"
             >
-              <Home className="h-4 w-4" />
+              <Home className="h-4 w-4 mr-1.5" />
               Inicio
             </Button>
+            <NotificationBell currentUserEmail={userEmail} />
             <button
               onClick={() => navigate("/perfil")}
-              title="Ver mi perfil"
-              className="w-9 h-9 rounded-full bg-gradient-to-br from-purple-600 to-blue-600 flex items-center justify-center hover:opacity-90 transition-opacity ring-2 ring-purple-200 hover:ring-purple-400 focus:outline-none focus:ring-2 focus:ring-purple-400"
+              title={userName}
+              className="w-8 h-8 rounded-full bg-gradient-to-br from-purple-600 to-blue-600 flex items-center justify-center hover:shadow-md transition-shadow ring-2 ring-purple-200/50 hover:ring-purple-300"
             >
               <span className="text-white text-xs font-semibold select-none">
                 {userName.trim().split(" ").filter(Boolean).slice(0, 2).map((word) => word[0].toUpperCase()).join("")}
@@ -198,15 +245,15 @@ export function GroupView() {
                   disabled={generatingInvite}
                   className="bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-700 hover:to-blue-700 flex items-center gap-2 h-10"
                 >
-                  {generatingInvite ? (
+                  {copied ? (
                     <>
-                      <span className="h-4 w-4 rounded-full border-2 border-white/40 border-t-white animate-spin" />
-                      Generando...
+                      <CheckCheck className="h-4 w-4 mr-1.5" />
+                      Copiado
                     </>
                   ) : (
                     <>
-                      <UserPlus className="h-4 w-4" />
-                      Invitar a la familia
+                      <Copy className="h-4 w-4 mr-1.5" />
+                      Copiar
                     </>
                   )}
                 </Button>
@@ -287,6 +334,148 @@ export function GroupView() {
           </Card>
         </div>
       </div>
+
+      {/* Contenido principal con grid moderno */}
+      <div className="container mx-auto max-w-7xl px-4 sm:px-6 py-6 sm:py-8">
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+          {/* Columna principal: Tareas y Ranking */}
+          <div className="lg:col-span-2 space-y-6">
+            <TasksList
+              groupId={groupId || ""}
+              refreshTrigger={tasksRefreshTrigger}
+              currentUserRole={userRole}
+              createTaskButton={
+                userRole !== "Colaborador"
+                  ? <CreateTaskForm groupId={groupId || ""} onTaskCreated={handleTaskCreated} />
+                  : undefined
+              }
+            />
+          </div>
+
+          {/* Columna lateral: Miembros y Ranking */}
+          <div className="space-y-6">
+            <MembersList
+              groupId={groupId || ""}
+              currentUserEmail={userEmail}
+              currentUserRole={userRole}
+            />
+
+            <WeeklyRankingView
+              groupId={groupId || ""}
+              currentUserEmail={userEmail}
+              refreshTrigger={tasksRefreshTrigger}
+            />
+
+            <WeeklyRankingForm groupId={groupId || ""} currentUserRole={userRole} />
+          </div>
+        </div>
+      </div>
+
+      {/* Modals sin cambios */}
+      <AlertDialog open={showLeaveDialog} onOpenChange={setShowLeaveDialog}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle className="flex items-center gap-2">
+              {isOnlyAdmin ? (
+                <>
+                  <AlertTriangle className="h-5 w-5 text-orange-500" />
+                  No puedes abandonar el grupo
+                </>
+              ) : (
+                <>
+                  <UserMinus className="h-5 w-5 text-gray-700" />
+                  ¿Deseas abandonar este grupo?
+                </>
+              )}
+            </AlertDialogTitle>
+            <AlertDialogDescription>
+              {isOnlyAdmin ? (
+                <div className="space-y-3 pt-2">
+                  <Alert variant="default" className="border-orange-200 bg-orange-50">
+                    <AlertTriangle className="h-4 w-4 text-orange-600" />
+                    <AlertDescription className="text-orange-900">
+                      Debes transferir la administración antes de abandonar el grupo
+                    </AlertDescription>
+                  </Alert>
+                  <p className="text-sm text-gray-600">
+                    Eres el único administrador de este grupo. Asigna el rol de administrador
+                    a otro miembro antes de poder salir.
+                  </p>
+                </div>
+              ) : (
+                <div className="space-y-2 pt-2">
+                  <p className="text-sm text-gray-600">
+                    Al abandonar el grupo <span className="font-medium text-gray-900">"{group?.name}"</span>,
+                    perderás acceso a todas sus tareas y actividades.
+                  </p>
+                </div>
+              )}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            {isOnlyAdmin ? (
+              <AlertDialogCancel>Entendido</AlertDialogCancel>
+            ) : (
+              <>
+                <AlertDialogCancel disabled={leavingGroup}>Cancelar</AlertDialogCancel>
+                <AlertDialogAction
+                  onClick={handleConfirmLeave}
+                  disabled={leavingGroup}
+                  className="bg-red-600 hover:bg-red-700"
+                >
+                  {leavingGroup ? "Abandonando..." : "Sí, abandonar grupo"}
+                </AlertDialogAction>
+              </>
+            )}
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      <AlertDialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle className="flex items-center gap-2">
+              <Trash2 className="h-5 w-5 text-red-600" />
+              ¿Eliminar grupo "{group?.name}"?
+            </AlertDialogTitle>
+            <AlertDialogDescription>
+              <div className="space-y-3 pt-2">
+                <Alert variant="default" className="border-red-200 bg-red-50">
+                  <AlertTriangle className="h-4 w-4 text-red-600" />
+                  <AlertDescription className="text-red-900">
+                    <span className="font-semibold">Esta acción es irreversible</span>
+                  </AlertDescription>
+                </Alert>
+                <div className="text-sm text-gray-600 space-y-2">
+                  <p>Al eliminar este grupo, se eliminarán permanentemente:</p>
+                  <ul className="list-disc list-inside space-y-1 ml-2">
+                    <li>Todos los miembros del grupo</li>
+                    <li>Todas las tareas pendientes y completadas</li>
+                    <li>Toda la información asociada al grupo</li>
+                  </ul>
+                </div>
+              </div>
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={deletingGroup}>Cancelar</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleConfirmDelete}
+              disabled={deletingGroup}
+              className="bg-red-600 hover:bg-red-700"
+            >
+              {deletingGroup ? (
+                <span className="flex items-center gap-2">
+                  <span className="h-4 w-4 rounded-full border-2 border-white/40 border-t-white animate-spin" />
+                  Eliminando...
+                </span>
+              ) : (
+                "Eliminar grupo"
+              )}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }

@@ -469,7 +469,7 @@ export function TasksList({ groupId, refreshTrigger, createTaskButton, currentUs
                     )}
                   </div>
                   <div className="shrink-0">
-                    <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-medium border ${getStatusBadgeStyle(task.status)}`}>
+                    <span className={"inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-medium border " + getStatusBadgeStyle(task.status)}>
                       {getStatusIcon(task.status)}
                       {getStatusText(task.status)}
                     </span>
@@ -481,7 +481,7 @@ export function TasksList({ groupId, refreshTrigger, createTaskButton, currentUs
                     <User className="h-4 w-4 text-gray-400 shrink-0" />
                     <div className="min-w-0">
                       <p className="text-xs text-gray-500">Responsable</p>
-                      <p className={`${task.assignedToName ? "text-gray-700" : "text-gray-400 italic"} truncate`}>
+                      <p className={(task.assignedToName ? "text-gray-700" : "text-gray-400 italic") + " truncate"}>
                         {task.assignedToName || "Sin asignar"}
                       </p>
                     </div>
@@ -491,7 +491,7 @@ export function TasksList({ groupId, refreshTrigger, createTaskButton, currentUs
                     <AlertCircle className="h-4 w-4 text-gray-400 shrink-0" />
                     <div className="min-w-0">
                       <p className="text-xs text-gray-500">Prioridad</p>
-                      <span className={`inline-flex items-center px-2 py-0.5 rounded-md text-xs font-medium border ${getPriorityBadgeStyle(task.priority)}`}>
+                      <span className={"inline-flex items-center px-2 py-0.5 rounded-md text-xs font-medium border " + getPriorityBadgeStyle(task.priority)}>
                         {getPriorityText(task.priority)}
                       </span>
                     </div>
@@ -541,8 +541,8 @@ export function TasksList({ groupId, refreshTrigger, createTaskButton, currentUs
                     </Button>
                   </div>
                 </div>
-              );
-            })}
+              </div>
+            ))}
           </div>
 
           {/* Botón Ver más / Ver menos */}

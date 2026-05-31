@@ -96,46 +96,10 @@ export function GroupView() {
     }
 
     setGeneratingInvite(true);
-<<<<<<< HEAD
     try {
       const invite = await createInvite(groupId);
       setInviteLink(`${window.location.origin}/unirse/${invite.code}`);
       setInviteExpiresAt(new Date(invite.expiresAt).getTime());
-=======
-
-    setTimeout(() => {
-      if (!group) return;
-
-      const existing = getActiveInvite(group.id);
-      if (existing) {
-        const baseUrl = window.location.origin;
-        setInviteLink(`${baseUrl}/unirse/${existing.code}`);
-        setInviteExpiresAt(existing.expiresAt);
-        setShowInvite(true);
-        setGeneratingInvite(false);
-        return;
-      }
-
-      const code = generateInviteCode();
-      const now = Date.now();
-      const newInvite: InviteRecord = {
-        code,
-        groupId: group.id,
-        groupName: group.name,
-        createdAt: now,
-        expiresAt: now + INVITE_TTL,
-      };
-
-      const invites: InviteRecord[] = JSON.parse(
-        localStorage.getItem("familyInvites") || "[]"
-      );
-      invites.push(newInvite);
-      localStorage.setItem("familyInvites", JSON.stringify(invites));
-
-      const baseUrl = window.location.origin;
-      setInviteLink(`${baseUrl}/unirse/${code}`);
-      setInviteExpiresAt(newInvite.expiresAt);
->>>>>>> upstream/Front
       setShowInvite(true);
     } finally {
       setGeneratingInvite(false);

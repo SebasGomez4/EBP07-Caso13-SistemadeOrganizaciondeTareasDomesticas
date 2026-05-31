@@ -210,60 +210,65 @@ export function Home() {
                   Crear grupo familiar
                 </Button>
               </div>
-            ) : (
-              /* Escenario 2: Usuario sin grupos - Estado vacío moderno */
-              <Card className="max-w-2xl mx-auto shadow-xl border-purple-100/50 backdrop-blur-sm bg-white/80 overflow-hidden">
-                <div className="absolute inset-0 bg-gradient-to-br from-purple-50/50 via-transparent to-blue-50/50" />
-                <CardContent className="relative pt-12 pb-12 px-6 sm:px-10">
-                  <div className="text-center space-y-8">
-                    {/* Icono decorativo grande */}
-                    <div className="relative inline-block">
-                      <div className="w-24 h-24 mx-auto rounded-3xl bg-gradient-to-br from-purple-500 to-blue-500 flex items-center justify-center shadow-lg">
-                        <Users className="h-12 w-12 text-white" />
-                      </div>
-                      {/* Anillos decorativos */}
-                      <div className="absolute inset-0 w-24 h-24 mx-auto rounded-3xl border-4 border-purple-200 animate-ping opacity-20" />
-                      <div className="absolute -inset-3 rounded-3xl border border-purple-100" />
-                    </div>
+            </CardContent>
+          </Card>
 
-          <Card className="shadow-sm border-purple-100">
-            <CardHeader>
-              <CardTitle className="text-xl">Mis grupos</CardTitle>
-            </CardHeader>
-            <CardContent>
-              {loadingGroups ? (
-                <div className="flex items-center justify-center py-8 gap-3 text-gray-500">
-                  <Loader2 className="h-5 w-5 animate-spin" />
-                  Cargando grupos...
+          {/* Estado: tarjeta con lista de grupos (o mensaje vacío) */}
+          <Card className="max-w-2xl mx-auto shadow-xl border-purple-100/50 backdrop-blur-sm bg-white/80 overflow-hidden">
+            <div className="absolute inset-0 bg-gradient-to-br from-purple-50/50 via-transparent to-blue-50/50" />
+            <CardContent className="relative pt-12 pb-12 px-6 sm:px-10">
+              <div className="text-center space-y-8">
+                {/* Icono decorativo grande */}
+                <div className="relative inline-block">
+                  <div className="w-24 h-24 mx-auto rounded-3xl bg-gradient-to-br from-purple-500 to-blue-500 flex items-center justify-center shadow-lg">
+                    <Users className="h-12 w-12 text-white" />
+                  </div>
+                  {/* Anillos decorativos */}
+                  <div className="absolute inset-0 w-24 h-24 mx-auto rounded-3xl border-4 border-purple-200 animate-ping opacity-20" />
+                  <div className="absolute -inset-3 rounded-3xl border border-purple-100" />
                 </div>
-              ) : groups.length === 0 ? (
-                <div className="text-center py-8 text-gray-500">
-                  Aun no perteneces a ningun grupo. Crea uno o acepta una invitacion.
-                </div>
-              ) : (
-                <div className="space-y-3">
-                  {groups.map((group) => (
-                    <div
-                      key={group.id}
-                      className="flex items-center justify-between gap-4 p-4 rounded-xl border border-purple-100 bg-white"
-                    >
-                      <div>
-                        <p className="text-lg text-gray-900">{group.name}</p>
-                        <p className="text-sm text-gray-500">
-                          {group.memberCount} miembro{group.memberCount === 1 ? "" : "s"}
-                        </p>
+
+                <Card className="shadow-sm border-purple-100">
+                  <CardHeader>
+                    <CardTitle className="text-xl">Mis grupos</CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    {loadingGroups ? (
+                      <div className="flex items-center justify-center py-8 gap-3 text-gray-500">
+                        <Loader2 className="h-5 w-5 animate-spin" />
+                        Cargando grupos...
                       </div>
-                      <Button
-                        onClick={() => navigate(`/grupo/${group.id}`)}
-                        className="bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-700 hover:to-blue-700 flex items-center gap-2"
-                      >
-                        Entrar
-                        <ArrowRight className="h-4 w-4" />
-                      </Button>
-                    </div>
-                  ))}
-                </div>
-              )}
+                    ) : groups.length === 0 ? (
+                      <div className="text-center py-8 text-gray-500">
+                        Aun no perteneces a ningun grupo. Crea uno o acepta una invitacion.
+                      </div>
+                    ) : (
+                      <div className="space-y-3">
+                        {groups.map((group) => (
+                          <div
+                            key={group.id}
+                            className="flex items-center justify-between gap-4 p-4 rounded-xl border border-purple-100 bg-white"
+                          >
+                            <div>
+                              <p className="text-lg text-gray-900">{group.name}</p>
+                              <p className="text-sm text-gray-500">
+                                {group.memberCount} miembro{group.memberCount === 1 ? "" : "s"}
+                              </p>
+                            </div>
+                            <Button
+                              onClick={() => navigate(`/grupo/${group.id}`)}
+                              className="bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-700 hover:to-blue-700 flex items-center gap-2"
+                            >
+                              Entrar
+                              <ArrowRight className="h-4 w-4" />
+                            </Button>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </CardContent>
+                </Card>
+              </div>
             </CardContent>
           </Card>
         </div>

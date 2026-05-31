@@ -43,6 +43,8 @@ public class HouseholdTask {
     @Column(nullable = false)
     private String status;
 
+    private Instant completedAt;
+
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "assigned_to_id")
     private AppUser assignedTo;
@@ -115,6 +117,14 @@ public class HouseholdTask {
 
     public void setStatus(String status) {
         this.status = status;
+    }
+
+    public Instant getCompletedAt() {
+        return completedAt;
+    }
+
+    public void setCompletedAt(Instant completedAt) {
+        this.completedAt = completedAt;
     }
 
     public AppUser getAssignedTo() {

@@ -53,10 +53,11 @@ Configura el proyecto apuntando a `Soyla/Frontend` y usa:
 
 - Build command: `npm run build`
 - Output directory: `dist`
-- Variable: `VITE_API_URL=https://soyla-api.onrender.com/api`
+- Variable de entorno: `VITE_API_URL=https://soyla-api.onrender.com/api`
 
 El archivo `vercel.json` ya agrega el rewrite para que las rutas del SPA funcionen.
 Configura `VITE_API_URL` en `Production` y `Preview` dentro de Vercel para que ambos entornos usen el backend correcto.
+En desarrollo local, `.env.example` usa `http://localhost:8080/api`. En despliegue no dependas del fallback del codigo: define `VITE_API_URL` en Vercel.
 
 ### Backend en Render con Docker
 
@@ -68,9 +69,11 @@ Variables recomendadas:
 - `DATABASE_URL=<conexion de Render Postgres>`
 - `DATABASE_USERNAME=<usuario de Render Postgres>`
 - `DATABASE_PASSWORD=<password de Render Postgres>`
+- `APP_DATA_ENCRYPTION_KEY=<clave larga y privada para cifrar datos personales>`
 
 Para el plan gratuito de Render, usa Postgres en lugar de H2. Los discos persistentes no estan disponibles en Free, asi que la persistencia debe venir de la base administrada.
 Si usas `rootDir: Soyla`, deja `dockerfilePath` y `dockerContext` relativos a esa carpeta.
+El `render.yaml` incluido ya crea el servicio `soyla-api`, una base Postgres gratuita, CORS para Vercel y una clave generada para `APP_DATA_ENCRYPTION_KEY`.
 
 ## Verificacion realizada
 

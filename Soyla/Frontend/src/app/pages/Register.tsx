@@ -46,6 +46,7 @@ export function Register() {
   const [error, setError] = useState("");
   const [passwordError, setPasswordError] = useState("");
   const [success, setSuccess] = useState(false);
+  const [confirmationUrl, setConfirmationUrl] = useState("");
   const [loading, setLoading] = useState(false);
 
   const passwordValidation = password ? validatePasswordComplexity(password) : null;
@@ -81,17 +82,17 @@ export function Register() {
     setLoading(true);
 
     try {
-      await registerUser({
+      const response = await registerUser({
         fullName: fullName.trim(),
         email: email.trim(),
         password,
       });
 
+      setConfirmationUrl(response.confirmationUrl ? `${window.location.origin}${response.confirmationUrl}` : "");
       setSuccess(true);
-      window.setTimeout(() => navigate("/"), 2000);
     } catch (caughtError) {
       setError(
-        caughtError instanceof ApiError
+        caughtError instanceof ApiError || caughtError instanceof Error
           ? caughtError.message
           : "No fue posible completar el registro."
       );
@@ -109,6 +110,20 @@ export function Register() {
               <UserPlus className="h-7 w-7 text-green-600" />
             </div>
             <p className="text-xl text-gray-900">Registro exitoso</p>
+            <p className="text-sm text-gray-600">
+              Tu cuenta quedo pendiente de activacion. Revisa tu correo para confirmarla.
+            </p>
+            {confirmationUrl && (
+              <div className="w-full bg-purple-50 border border-purple-100 rounded-lg p-3 text-left">
+                <p className="text-xs text-gray-500 mb-1">Enlace de confirmacion para desarrollo:</p>
+                <a href={confirmationUrl} className="text-xs text-purple-700 break-all hover:underline">
+                  {confirmationUrl}
+                </a>
+              </div>
+            )}
+            <Button onClick={() => navigate("/")} className="w-full h-11 bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-700 hover:to-blue-700">
+              Ir al inicio de sesion
+            </Button>
           </CardContent>
         </Card>
       ) : (

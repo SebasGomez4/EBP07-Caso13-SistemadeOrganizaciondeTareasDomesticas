@@ -17,4 +17,6 @@ public interface GroupMembershipRepository extends JpaRepository<GroupMembership
     Optional<GroupMembership> findByGroup_IdAndUser_EmailIgnoreCase(UUID groupId, String email);
 
     boolean existsByGroup_IdAndUser_EmailIgnoreCase(UUID groupId, String email);
+
+    void deleteByGroup_Id(UUID groupId);
 }

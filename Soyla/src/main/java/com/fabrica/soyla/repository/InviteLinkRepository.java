@@ -15,4 +15,6 @@ public interface InviteLinkRepository extends JpaRepository<InviteLink, UUID> {
     Optional<InviteLink> findFirstByGroup_IdAndExpiresAtAfterOrderByCreatedAtDesc(UUID groupId, Instant now);
 
     boolean existsByCode(String code);
+
+    void deleteByGroup_Id(UUID groupId);
 }

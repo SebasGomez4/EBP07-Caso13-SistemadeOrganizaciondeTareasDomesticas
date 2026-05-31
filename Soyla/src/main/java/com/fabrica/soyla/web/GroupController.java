@@ -16,13 +16,18 @@ import org.springframework.web.bind.annotation.RestController;
 
 import com.fabrica.soyla.service.SoylaService;
 import com.fabrica.soyla.web.ApiModels.AssignTaskRequest;
+import com.fabrica.soyla.web.ApiModels.CreateRankingRequest;
 import com.fabrica.soyla.web.ApiModels.CreateGroupRequest;
 import com.fabrica.soyla.web.ApiModels.CreateTaskRequest;
+import com.fabrica.soyla.web.ApiModels.GroupActionRequest;
 import com.fabrica.soyla.web.ApiModels.GroupMemberResponse;
 import com.fabrica.soyla.web.ApiModels.GroupResponse;
 import com.fabrica.soyla.web.ApiModels.InviteResponse;
+import com.fabrica.soyla.web.ApiModels.NotificationResponse;
 import com.fabrica.soyla.web.ApiModels.TaskResponse;
 import com.fabrica.soyla.web.ApiModels.UpdateMemberRoleRequest;
+import com.fabrica.soyla.web.ApiModels.UpdateTaskStatusRequest;
+import com.fabrica.soyla.web.ApiModels.WeeklyRankingResponse;
 
 @RestController
 @Validated
@@ -64,6 +69,19 @@ public class GroupController {
         return soylaService.updateMemberRole(groupId, memberEmail, request);
     }
 
+    @DeleteMapping("/groups/{groupId}/members/{memberEmail}")
+    public void leaveGroup(@PathVariable UUID groupId, @PathVariable String memberEmail) {
+        soylaService.leaveGroup(groupId, memberEmail);
+    }
+
+    @DeleteMapping("/groups/{groupId}")
+    public void deleteGroup(
+        @PathVariable UUID groupId,
+        @RequestBody @jakarta.validation.Valid GroupActionRequest request
+    ) {
+        soylaService.deleteGroup(groupId, request);
+    }
+
     @GetMapping("/groups/{groupId}/invite")
     public InviteResponse getActiveInvite(@PathVariable UUID groupId) {
         return soylaService.getActiveInvite(groupId);
@@ -95,8 +113,47 @@ public class GroupController {
         return soylaService.assignTask(taskId, request);
     }
 
+    @PutMapping("/tasks/{taskId}/status")
+    public TaskResponse updateTaskStatus(
+        @PathVariable UUID taskId,
+        @RequestBody @jakarta.validation.Valid UpdateTaskStatusRequest request
+    ) {
+        return soylaService.updateTaskStatus(taskId, request);
+    }
+
     @DeleteMapping("/tasks/{taskId}")
     public void deleteTask(@PathVariable UUID taskId) {
         soylaService.deleteTask(taskId);
+    }
+
+    @PostMapping("/groups/{groupId}/ranking")
+    public WeeklyRankingResponse createWeeklyRanking(
+        @PathVariable UUID groupId,
+        @RequestBody @jakarta.validation.Valid CreateRankingRequest request
+    ) {
+        return soylaService.createWeeklyRanking(groupId, request);
+    }
+
+    @GetMapping("/groups/{groupId}/ranking")
+    public WeeklyRankingResponse getWeeklyRanking(@PathVariable UUID groupId) {
+        return soylaService.getWeeklyRanking(groupId);
+    }
+
+    @GetMapping("/notifications")
+    public List<NotificationResponse> listNotifications(@RequestParam String email) {
+        return soylaService.listNotifications(email);
+    }
+
+    @PutMapping("/notifications/{notificationId}/read")
+    public NotificationResponse markNotificationRead(
+        @PathVariable UUID notificationId,
+        @RequestParam String email
+    ) {
+        return soylaService.markNotificationRead(notificationId, email);
+    }
+
+    @PutMapping("/notifications/read-all")
+    public void markAllNotificationsRead(@RequestParam String email) {
+        soylaService.markAllNotificationsRead(email);
     }
 }

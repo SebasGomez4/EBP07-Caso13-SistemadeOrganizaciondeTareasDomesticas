@@ -1,9 +1,13 @@
 const DEFAULT_LOCAL_API_BASE_URL = "http://localhost:8080/api";
 const DEFAULT_PRODUCTION_API_BASE_URL = "https://soyla-api.onrender.com/api";
 
+function isLocalHost(hostname: string) {
+  return hostname === "localhost" || hostname === "127.0.0.1" || hostname === "::1";
+}
+
 const RAW_API_BASE_URL =
   import.meta.env.VITE_API_URL ||
-  (typeof window !== "undefined" && window.location.hostname === "localhost"
+  (typeof window !== "undefined" && isLocalHost(window.location.hostname)
     ? DEFAULT_LOCAL_API_BASE_URL
     : DEFAULT_PRODUCTION_API_BASE_URL);
 
@@ -33,6 +37,21 @@ export interface SessionUser {
   fullName: string;
   email: string;
   token: string;
+  active?: boolean;
+  confirmationUrl?: string | null;
+}
+
+export interface RegisterResponse {
+  fullName: string;
+  email: string;
+  token?: string | null;
+  active: boolean;
+  confirmationUrl?: string | null;
+}
+
+export interface ConfirmEmailResponse {
+  email: string;
+  active: boolean;
 }
 
 export interface UserProfile {
@@ -83,6 +102,47 @@ export interface Task {
   priority?: "alta" | "media" | "baja" | null;
   status: "pending" | "in_progress" | "completed";
   createdAt: string;
+  completedAt?: string | null;
+}
+
+export interface RankingTaskHistory {
+  taskId: string;
+  taskName: string;
+  completedAt: string;
+  points: number;
+}
+
+export interface RankingMember {
+  email: string;
+  fullName: string;
+  points: number;
+  completedTasks: number;
+  position: number;
+  history: RankingTaskHistory[];
+}
+
+export interface WeeklyRanking {
+  id: string;
+  groupId: string;
+  pointsPerTask: number;
+  weeklyGoal: number;
+  startAt: string;
+  endAt: string;
+  active: boolean;
+  createdAt: string;
+  winnerEmail?: string | null;
+  members: RankingMember[];
+}
+
+export interface UserNotification {
+  id: string;
+  type: "completion" | "overdue" | "due_soon" | "assignment";
+  title: string;
+  description: string;
+  read: boolean;
+  groupId: string;
+  taskId?: string | null;
+  createdAt: string;
 }
 
 function getAuthToken(): string | null {
@@ -109,11 +169,19 @@ async function request<T>(path: string, options: RequestOptions = {}): Promise<T
     defaultHeaders["Authorization"] = `Bearer ${token}`;
   }
 
-  const response = await fetch(`${API_BASE_URL}${path}`, {
-    method: options.method || "GET",
-    headers: Object.keys(defaultHeaders).length ? defaultHeaders : undefined,
-    body: options.body === undefined ? undefined : JSON.stringify(options.body),
-  });
+  let response: Response;
+  try {
+    response = await fetch(`${API_BASE_URL}${path}`, {
+      method: options.method || "GET",
+      headers: Object.keys(defaultHeaders).length ? defaultHeaders : undefined,
+      body: options.body === undefined ? undefined : JSON.stringify(options.body),
+    });
+  } catch {
+    throw new ApiError(
+      `No se pudo conectar con el servidor en ${API_BASE_URL}. Verifica que el backend este ejecutandose.`,
+      0
+    );
+  }
 
   if (!response.ok) {
     let message = "Ocurri\u00f3 un error al procesar la solicitud.";
@@ -141,8 +209,8 @@ export async function registerUser(payload: {
   fullName: string;
   email: string;
   password: string;
-}): Promise<SessionUser> {
-  return request<SessionUser>("/auth/register", {
+}): Promise<RegisterResponse> {
+  return request<RegisterResponse>("/auth/register", {
     method: "POST",
     body: payload,
   });
@@ -155,6 +223,17 @@ export async function loginUser(payload: {
   return request<SessionUser>("/auth/login", {
     method: "POST",
     body: payload,
+  });
+}
+
+export async function confirmEmail(token: string): Promise<ConfirmEmailResponse> {
+  return request<ConfirmEmailResponse>(`/auth/confirm?token=${encodeURIComponent(token)}`);
+}
+
+export async function resendConfirmation(email: string): Promise<RegisterResponse> {
+  return request<RegisterResponse>("/auth/resend-confirmation", {
+    method: "POST",
+    body: { email },
   });
 }
 
@@ -188,6 +267,22 @@ export async function listGroups(memberEmail: string): Promise<FamilyGroup[]> {
 
 export async function getGroup(groupId: string): Promise<FamilyGroup> {
   return request<FamilyGroup>(`/groups/${groupId}`);
+}
+
+export async function leaveGroup(groupId: string, memberEmail: string): Promise<void> {
+  return request<void>(`/groups/${groupId}/members/${encodeURIComponent(memberEmail)}`, {
+    method: "DELETE",
+  });
+}
+
+export async function deleteGroup(
+  groupId: string,
+  payload: { requestedByEmail: string }
+): Promise<void> {
+  return request<void>(`/groups/${groupId}`, {
+    method: "DELETE",
+    body: payload,
+  });
 }
 
 export async function listGroupMembers(groupId: string): Promise<GroupMember[]> {
@@ -262,8 +357,52 @@ export async function assignTask(
   });
 }
 
+export async function updateTaskStatus(
+  taskId: string,
+  payload: { status: Task["status"]; requestedByEmail: string }
+): Promise<Task> {
+  return request<Task>(`/tasks/${taskId}/status`, {
+    method: "PUT",
+    body: payload,
+  });
+}
+
 export async function deleteTask(taskId: string): Promise<void> {
   return request<void>(`/tasks/${taskId}`, {
     method: "DELETE",
+  });
+}
+
+export async function createWeeklyRanking(
+  groupId: string,
+  payload: { pointsPerTask: number; weeklyGoal: number; requestedByEmail: string }
+): Promise<WeeklyRanking> {
+  return request<WeeklyRanking>(`/groups/${groupId}/ranking`, {
+    method: "POST",
+    body: payload,
+  });
+}
+
+export async function getWeeklyRanking(groupId: string): Promise<WeeklyRanking> {
+  return request<WeeklyRanking>(`/groups/${groupId}/ranking`);
+}
+
+export async function listNotifications(email: string): Promise<UserNotification[]> {
+  return request<UserNotification[]>(`/notifications?email=${encodeURIComponent(email)}`);
+}
+
+export async function markNotificationRead(
+  notificationId: string,
+  email: string
+): Promise<UserNotification> {
+  return request<UserNotification>(
+    `/notifications/${notificationId}/read?email=${encodeURIComponent(email)}`,
+    { method: "PUT" }
+  );
+}
+
+export async function markAllNotificationsRead(email: string): Promise<void> {
+  return request<void>(`/notifications/read-all?email=${encodeURIComponent(email)}`, {
+    method: "PUT",
   });
 }

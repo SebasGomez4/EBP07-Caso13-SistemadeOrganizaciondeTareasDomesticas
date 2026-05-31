@@ -4,12 +4,15 @@ import java.time.Instant;
 import java.util.UUID;
 
 import jakarta.persistence.Column;
+import jakarta.persistence.Convert;
 import jakarta.persistence.Entity;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
 import jakarta.persistence.PrePersist;
 import jakarta.persistence.Table;
+
+import com.fabrica.soyla.config.StringEncryptionConverter;
 
 @Entity
 @Table(name = "app_users")
@@ -28,7 +31,15 @@ public class AppUser {
     @Column(nullable = false)
     private String passwordHash;
 
+    @Convert(converter = StringEncryptionConverter.class)
     private String phone;
+
+    @Column(nullable = false)
+    private boolean active;
+
+    private String emailConfirmationToken;
+
+    private Instant emailConfirmationExpiresAt;
 
     @Column(nullable = false, updatable = false)
     private Instant createdAt;
@@ -74,6 +85,30 @@ public class AppUser {
 
     public void setPhone(String phone) {
         this.phone = phone;
+    }
+
+    public boolean isActive() {
+        return active;
+    }
+
+    public void setActive(boolean active) {
+        this.active = active;
+    }
+
+    public String getEmailConfirmationToken() {
+        return emailConfirmationToken;
+    }
+
+    public void setEmailConfirmationToken(String emailConfirmationToken) {
+        this.emailConfirmationToken = emailConfirmationToken;
+    }
+
+    public Instant getEmailConfirmationExpiresAt() {
+        return emailConfirmationExpiresAt;
+    }
+
+    public void setEmailConfirmationExpiresAt(Instant emailConfirmationExpiresAt) {
+        this.emailConfirmationExpiresAt = emailConfirmationExpiresAt;
     }
 
     public Instant getCreatedAt() {

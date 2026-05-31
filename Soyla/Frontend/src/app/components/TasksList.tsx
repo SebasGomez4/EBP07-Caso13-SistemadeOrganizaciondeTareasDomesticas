@@ -47,6 +47,7 @@ import {
   deleteTask,
   listGroupMembers,
   listTasks,
+  updateTaskStatus,
   type GroupMember,
   type Task,
 } from "../lib/api";
@@ -56,6 +57,7 @@ interface TasksListProps {
   refreshTrigger?: number;
   createTaskButton?: React.ReactNode;
   currentUserRole?: "Administrador" | "Coadministrador" | "Colaborador";
+  currentUserEmail?: string;
 }
 
 function getStatusBadgeStyle(status: string) {
@@ -128,7 +130,7 @@ function formatFrequency(frequency?: string) {
   }[frequency] || frequency;
 }
 
-export function TasksList({ groupId, refreshTrigger, createTaskButton, currentUserRole }: TasksListProps) {
+export function TasksList({ groupId, refreshTrigger, createTaskButton, currentUserRole, currentUserEmail }: TasksListProps) {
   const [tasks, setTasks] = useState<Task[]>([]);
   const [groupMembers, setGroupMembers] = useState<GroupMember[]>([]);
   const [loading, setLoading] = useState(true);
@@ -155,9 +157,6 @@ export function TasksList({ groupId, refreshTrigger, createTaskButton, currentUs
 
   const isColaborador = currentUserRole === "Colaborador";
 
-  const [recentActivity, setRecentActivity] = useState<CompletionAlert[]>([]);
-  const [newActivityCount, setNewActivityCount] = useState(0);
-  const [isActivityExpanded, setIsActivityExpanded] = useState(true);
   const [isTasksExpanded, setIsTasksExpanded] = useState(false);
 
   const INITIAL_TASKS_VISIBLE = 4;
@@ -238,6 +237,29 @@ export function TasksList({ groupId, refreshTrigger, createTaskButton, currentUs
     } finally {
       setIsDeleting(false);
       setDeleteDialogOpen(false);
+    }
+  };
+
+  const handleStatusChange = async (task: Task, status: Task["status"]) => {
+    if (!currentUserEmail) return;
+    if (task.assignedToEmail !== currentUserEmail) {
+      setShowRestrictedMessage(true);
+      window.setTimeout(() => setShowRestrictedMessage(false), 4000);
+      return;
+    }
+
+    setUpdatingTaskId(task.id);
+    try {
+      const updatedTask = await updateTaskStatus(task.id, {
+        status,
+        requestedByEmail: currentUserEmail,
+      });
+      setTasks((prev) => prev.map((item) => (item.id === updatedTask.id ? updatedTask : item)));
+      setStatusSuccessTaskName(updatedTask.name);
+      setShowStatusSuccessMessage(true);
+      window.setTimeout(() => setShowStatusSuccessMessage(false), 4000);
+    } finally {
+      setUpdatingTaskId(null);
     }
   };
 
@@ -327,6 +349,32 @@ export function TasksList({ groupId, refreshTrigger, createTaskButton, currentUs
             className="shrink-0 p-1 rounded-md hover:bg-gray-100 transition-colors"
             aria-label="Cerrar notificación"
           >
+            <X className="h-4 w-4 text-gray-400 hover:text-gray-600" />
+          </button>
+        </div>
+      )}
+
+      {showStatusSuccessMessage && (
+        <div className="fixed top-4 right-4 z-50 flex items-center gap-3 bg-white border border-green-200 shadow-lg rounded-lg px-5 py-3 transition-all max-w-md">
+          <CheckCircle2 className="h-5 w-5 text-green-500 shrink-0" />
+          <div className="flex-1">
+            <p className="text-sm font-medium text-gray-900">Estado actualizado</p>
+            <p className="text-xs text-gray-600 mt-0.5">La tarea "{statusSuccessTaskName}" fue actualizada</p>
+          </div>
+          <button onClick={() => setShowStatusSuccessMessage(false)} className="shrink-0 p-1 rounded-md hover:bg-gray-100" aria-label="Cerrar notificacion">
+            <X className="h-4 w-4 text-gray-400 hover:text-gray-600" />
+          </button>
+        </div>
+      )}
+
+      {showRestrictedMessage && (
+        <div className="fixed top-4 right-4 z-50 flex items-center gap-3 bg-white border border-orange-200 shadow-lg rounded-lg px-5 py-3 transition-all max-w-md">
+          <AlertCircle className="h-5 w-5 text-orange-500 shrink-0" />
+          <div className="flex-1">
+            <p className="text-sm font-medium text-gray-900">Accion restringida</p>
+            <p className="text-xs text-gray-600 mt-0.5">Solo el responsable puede actualizar esta tarea.</p>
+          </div>
+          <button onClick={() => setShowRestrictedMessage(false)} className="shrink-0 p-1 rounded-md hover:bg-gray-100" aria-label="Cerrar notificacion">
             <X className="h-4 w-4 text-gray-400 hover:text-gray-600" />
           </button>
         </div>
@@ -527,6 +575,20 @@ export function TasksList({ groupId, refreshTrigger, createTaskButton, currentUs
                       <UserPlus className="h-4 w-4" />
                       {task.assignedToEmail ? "Reasignar tarea" : "Asignar tarea"}
                     </Button>
+                    <Select
+                      value={task.status}
+                      onValueChange={(value) => void handleStatusChange(task, value as Task["status"])}
+                      disabled={updatingTaskId === task.id}
+                    >
+                      <SelectTrigger className="h-9 w-[160px] border-purple-200">
+                        <SelectValue placeholder="Estado" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="pending">Sin empezar</SelectItem>
+                        <SelectItem value="in_progress">En progreso</SelectItem>
+                        <SelectItem value="completed">Completada</SelectItem>
+                      </SelectContent>
+                    </Select>
                     <Button
                       onClick={() => {
                         setTaskToDelete(task);
